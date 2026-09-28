@@ -3,6 +3,7 @@ using AiGateway.Infrastructure.AiProviders;
 using AiGateway.Infrastructure.Data;
 using AiGateway.Infrastructure.Data.Interceptors;
 using AiGateway.Infrastructure.Identity;
+using AiGateway.Infrastructure.Metering;
 using AiGateway.Infrastructure.Routing;
 using AiGateway.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
@@ -52,6 +53,18 @@ public static class DependencyInjection
 
         // Encryption Service
         builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
+
+        // Memory Cache for Rate Limiting
+        builder.Services.AddMemoryCache();
+
+        // Virtual Key & Rate Limiting Services
+        builder.Services.AddScoped<IVirtualKeyService, VirtualKeyService>();
+        builder.Services.AddSingleton<IRateLimitService, RateLimitService>();
+
+        // Async Usage Metering Channel & Background Worker
+        builder.Services.AddSingleton<UsageMeteringChannel>();
+        builder.Services.AddSingleton<IUsageMeteringChannel>(sp => sp.GetRequiredService<UsageMeteringChannel>());
+        builder.Services.AddHostedService<UsageMeteringBackgroundService>();
 
         // HTTP Client & Provider Adapters
         builder.Services.AddHttpClient();
