@@ -1,7 +1,10 @@
-﻿using AiGateway.Application.Common.Interfaces;
+using AiGateway.Application.Common.Interfaces;
+using AiGateway.Infrastructure.AiProviders;
 using AiGateway.Infrastructure.Data;
 using AiGateway.Infrastructure.Data.Interceptors;
 using AiGateway.Infrastructure.Identity;
+using AiGateway.Infrastructure.Routing;
+using AiGateway.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -46,5 +49,18 @@ public static class DependencyInjection
 
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddTransient<IIdentityService, IdentityService>();
+
+        // Encryption Service
+        builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
+
+        // HTTP Client & Provider Adapters
+        builder.Services.AddHttpClient();
+        builder.Services.AddTransient<IAiProviderAdapter, OpenAiProviderAdapter>();
+        builder.Services.AddTransient<IAiProviderAdapter, GeminiProviderAdapter>();
+        builder.Services.AddTransient<IAiProviderAdapter, AnthropicProviderAdapter>();
+        builder.Services.AddScoped<IAiProviderAdapterFactory, ProviderAdapterFactory>();
+
+        // Intelligent Router
+        builder.Services.AddScoped<IIntelligentRouter, IntelligentRouter>();
     }
 }
