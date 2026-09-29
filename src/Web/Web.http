@@ -1,17 +1,57 @@
 # For more info on HTTP files go to https://aka.ms/vs/httpfile
 @Web_HostAddress = https://localhost:7144
 
-@Email=administrator@localhost
-@Password=Administrator1!
+@AdminEmail=administrator@localhost
+@AdminPassword=Administrator1!
+
+@UserEmail=testuser@localhost
+@UserPassword=User123!
+
+@NpcEmail=npcclient@localhost
+@NpcPassword=NpcClient123!
+
 @BearerToken=<YourToken>
 
-# POST Users Register
-POST {{Web_HostAddress}}/api/Users/Register
+# POST /auth (Admin Account Login)
+POST {{Web_HostAddress}}/auth
 Content-Type: application/json
 
 {
-  "email": "{{Email}}",
-  "password": "{{Password}}"
+  "email": "{{AdminEmail}}",
+  "password": "{{AdminPassword}}"
+}
+
+###
+
+# POST /auth (Standard User Account Login)
+POST {{Web_HostAddress}}/auth
+Content-Type: application/json
+
+{
+  "email": "{{UserEmail}}",
+  "password": "{{UserPassword}}"
+}
+
+###
+
+# POST /auth (NPC Client / Device Account Login)
+POST {{Web_HostAddress}}/auth
+Content-Type: application/json
+
+{
+  "email": "{{NpcEmail}}",
+  "password": "{{NpcPassword}}"
+}
+
+###
+
+# POST /auth/login
+POST {{Web_HostAddress}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{AdminEmail}}",
+  "password": "{{AdminPassword}}"
 }
 
 ###
