@@ -201,3 +201,23 @@ GET {{Web_HostAddress}}/api/analytics/provider-health
 Authorization: Bearer {{BearerToken}}
 
 ###
+
+# GET /conversations (Get NPC Chat History Context)
+GET {{Web_HostAddress}}/conversations?top=10
+Authorization: Bearer {{BearerToken}}
+
+###
+
+# POST /conversations/add (Add Chat Message Context)
+POST {{Web_HostAddress}}/conversations/add
+Authorization: Bearer {{BearerToken}}
+Content-Type: application/json
+
+{
+  "conversationId": "npc-session-01",
+  "role": "user",
+  "content": "Position: X=15.0, Y=4.0. Player entering combat range.",
+  "modelAlias": "smart-model"
+}
+
+###

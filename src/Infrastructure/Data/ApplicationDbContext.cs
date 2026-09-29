@@ -23,6 +23,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
 
     public DbSet<RequestLog> RequestLogs => Set<RequestLog>();
 
+    public DbSet<ChatHistory> ChatHistories => Set<ChatHistory>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

@@ -17,5 +17,7 @@ public interface IApplicationDbContext
 
     DbSet<RequestLog> RequestLogs { get; }
 
+    DbSet<ChatHistory> ChatHistories { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }

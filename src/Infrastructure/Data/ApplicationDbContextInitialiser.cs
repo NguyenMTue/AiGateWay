@@ -320,5 +320,44 @@ public class ApplicationDbContextInitialiser
             _logger.LogInformation("  Header Usage:    Authorization: Bearer {RawKey}", devRawKey);
             _logger.LogInformation("=========================================================================");
         }
+
+        // 6. Seed Initial Chat History Context for NPC / Testing
+        if (!await _context.ChatHistories.AnyAsync())
+        {
+            var npcClientUser = await _userManager.FindByEmailAsync("npcclient@localhost");
+            var userId = npcClientUser?.Id ?? "npcclient-dev-id";
+
+            _context.ChatHistories.AddRange(
+                new ChatHistory
+                {
+                    UserId = userId,
+                    ConversationId = "npc-session-01",
+                    Role = "system",
+                    Content = "You are an NPC Guard patrolling the castle courtyard.",
+                    ModelAlias = "smart-model",
+                    CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-10)
+                },
+                new ChatHistory
+                {
+                    UserId = userId,
+                    ConversationId = "npc-session-01",
+                    Role = "user",
+                    Content = "Position: X=12.5, Y=3.4. Player detected at 5m distance. What is your action?",
+                    ModelAlias = "smart-model",
+                    CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-5)
+                },
+                new ChatHistory
+                {
+                    UserId = userId,
+                    ConversationId = "npc-session-01",
+                    Role = "assistant",
+                    Content = "{\"action\": \"challenge_player\", \"dialogue\": \"Halt! State your business in the castle!\"}",
+                    ModelAlias = "smart-model",
+                    CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-4)
+                }
+            );
+
+            await _context.SaveChangesAsync();
+        }
     }
 }
