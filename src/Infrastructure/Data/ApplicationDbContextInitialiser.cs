@@ -84,13 +84,26 @@ public class ApplicationDbContextInitialiser
     {
         // 1. Default roles
         var administratorRole = new IdentityRole(Roles.Administrator);
+        var userRole = new IdentityRole(Roles.User);
+        var npcClientRole = new IdentityRole(Roles.NpcClient);
 
         if (_roleManager.Roles.All(r => r.Name != administratorRole.Name))
         {
             await _roleManager.CreateAsync(administratorRole);
         }
 
+        if (_roleManager.Roles.All(r => r.Name != userRole.Name))
+        {
+            await _roleManager.CreateAsync(userRole);
+        }
+
+        if (_roleManager.Roles.All(r => r.Name != npcClientRole.Name))
+        {
+            await _roleManager.CreateAsync(npcClientRole);
+        }
+
         // 2. Default users
+        // 2.1 Admin Account
         var administrator = new ApplicationUser { UserName = "administrator@localhost", Email = "administrator@localhost" };
 
         if (_userManager.Users.All(u => u.UserName != administrator.UserName))
@@ -99,6 +112,30 @@ public class ApplicationDbContextInitialiser
             if (!string.IsNullOrWhiteSpace(administratorRole.Name))
             {
                 await _userManager.AddToRolesAsync(administrator, new[] { administratorRole.Name });
+            }
+        }
+
+        // 2.2 Standard Test User Account
+        var testUser = new ApplicationUser { UserName = "testuser@localhost", Email = "testuser@localhost" };
+
+        if (_userManager.Users.All(u => u.UserName != testUser.UserName))
+        {
+            await _userManager.CreateAsync(testUser, "User123!");
+            if (!string.IsNullOrWhiteSpace(userRole.Name))
+            {
+                await _userManager.AddToRolesAsync(testUser, new[] { userRole.Name });
+            }
+        }
+
+        // 2.3 NPC Client / Device Account (for Mock Client testing)
+        var npcClient = new ApplicationUser { UserName = "npcclient@localhost", Email = "npcclient@localhost" };
+
+        if (_userManager.Users.All(u => u.UserName != npcClient.UserName))
+        {
+            await _userManager.CreateAsync(npcClient, "NpcClient123!");
+            if (!string.IsNullOrWhiteSpace(npcClientRole.Name))
+            {
+                await _userManager.AddToRolesAsync(npcClient, new[] { npcClientRole.Name });
             }
         }
 
