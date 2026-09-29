@@ -1,4 +1,4 @@
-﻿# For more info on HTTP files go to https://aka.ms/vs/httpfile
+# For more info on HTTP files go to https://aka.ms/vs/httpfile
 @Web_HostAddress = https://localhost:7144
 
 @Email=administrator@localhost
@@ -134,6 +134,30 @@ Content-Type: application/json
 
 # DELETE TodoItem
 DELETE {{Web_HostAddress}}/api/TodoItems/1
+Authorization: Bearer {{BearerToken}}
+
+###
+
+# GET RouteRules All
+GET {{Web_HostAddress}}/api/route-rules/all
+Authorization: Bearer {{BearerToken}}
+
+###
+
+# GET Analytics Cost and Token Usage
+GET {{Web_HostAddress}}/api/analytics/cost-usage?groupBy=day
+Authorization: Bearer {{BearerToken}}
+
+###
+
+# GET Analytics Usage by Virtual Key
+GET {{Web_HostAddress}}/api/analytics/virtual-keys?top=10
+Authorization: Bearer {{BearerToken}}
+
+###
+
+# GET Analytics Provider Health & Latency
+GET {{Web_HostAddress}}/api/analytics/provider-health
 Authorization: Bearer {{BearerToken}}
 
 ###
