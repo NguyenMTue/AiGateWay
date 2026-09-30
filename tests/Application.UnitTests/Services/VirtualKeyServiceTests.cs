@@ -165,4 +165,28 @@ public class VirtualKeyServiceTests
         result1.ShouldBeNull();
         result2.ShouldBeNull();
     }
+
+    [Test]
+    public void IsModelAllowed_WhenAllowedModelAliasesIsNull_ReturnsTrue()
+    {
+        var vk = new VirtualKey { AllowedModelAliases = null };
+        vk.IsModelAllowed("gpt-4o").ShouldBeTrue();
+        vk.IsModelAllowed("gemini-1.5-flash").ShouldBeTrue();
+    }
+
+    [Test]
+    public void IsModelAllowed_WhenModelIsInAllowedList_ReturnsTrue()
+    {
+        var vk = new VirtualKey { AllowedModelAliases = "gpt-4o-mini, gemini-1.5-flash" };
+        vk.IsModelAllowed("gpt-4o-mini").ShouldBeTrue();
+        vk.IsModelAllowed("GEMINI-1.5-FLASH").ShouldBeTrue();
+    }
+
+    [Test]
+    public void IsModelAllowed_WhenModelIsNotInAllowedList_ReturnsFalse()
+    {
+        var vk = new VirtualKey { AllowedModelAliases = "gpt-4o-mini, gemini-1.5-flash" };
+        vk.IsModelAllowed("gpt-4o").ShouldBeFalse();
+        vk.IsModelAllowed("claude-3-5-sonnet").ShouldBeFalse();
+    }
 }

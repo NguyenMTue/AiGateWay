@@ -20,7 +20,7 @@ public class AiProxyEndpoints : IEndpointGroup
         groupBuilder.MapGet("/models", GetModels);
     }
 
-    public static async Task<Results<Ok<ChatCompletionResponse>, UnauthorizedHttpResult, ProblemHttpResult>> CreateChatCompletion(
+    public static async Task<IResult> CreateChatCompletion(
         [FromHeader(Name = "Authorization")] string? authorization,
         [FromHeader(Name = "x-api-key")] string? xApiKey,
         [FromBody] ChatCompletionRequest request,
@@ -29,6 +29,8 @@ public class AiProxyEndpoints : IEndpointGroup
         IIntelligentRouter router,
         IAiProviderAdapterFactory adapterFactory,
         IUsageMeteringChannel meteringChannel,
+        ICircuitBreakerService circuitBreaker,
+        ISemanticCacheService semanticCache,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
@@ -46,6 +48,15 @@ public class AiProxyEndpoints : IEndpointGroup
             return TypedResults.Unauthorized();
         }
 
+        // 2.5 Model Access Control Check per Virtual Key
+        if (!virtualKey.IsModelAllowed(request.Model))
+        {
+            return TypedResults.Problem(
+                detail: $"Virtual Key '{virtualKey.Name}' is not authorized to access model '{request.Model}'.",
+                statusCode: StatusCodes.Status403Forbidden,
+                title: "Model Access Forbidden");
+        }
+
         // 3. Rate Limit Check (RPM & TPM)
         var estimatedTokens = request.MaxTokens ?? 500;
         var rateLimitResult = await rateLimitService.CheckAndRecordAsync(
@@ -61,6 +72,34 @@ public class AiProxyEndpoints : IEndpointGroup
                 detail: rateLimitResult.Reason,
                 statusCode: StatusCodes.Status429TooManyRequests,
                 title: "Rate Limit Exceeded");
+        }
+
+        // 3.5 Semantic Response Cache Check (for non-streaming requests)
+        var semanticKey = semanticCache.GenerateSemanticKey(request.Model, request.Messages);
+        if (!request.Stream)
+        {
+            var cachedResponse = await semanticCache.GetCachedResponseAsync(semanticKey, cancellationToken);
+            if (cachedResponse != null)
+            {
+                await meteringChannel.QueueUsageLogAsync(new UsageLogItem(
+                    VirtualKeyId: virtualKey.Id,
+                    ProviderId: 0,
+                    ModelId: 0,
+                    RequestedModelAlias: request.Model,
+                    PromptTokens: 0,
+                    CompletionTokens: 0,
+                    CalculatedCostUsd: 0.00m,
+                    LatencyMs: 1,
+                    HttpStatusCode: StatusCodes.Status200OK,
+                    IsSuccess: true,
+                    ErrorMessage: "Semantic Cache Hit",
+                    ClientIp: httpContext.Connection.RemoteIpAddress?.ToString(),
+                    UserAgent: httpContext.Request.Headers.UserAgent.ToString(),
+                    RequestedAt: DateTimeOffset.UtcNow
+                ), cancellationToken);
+
+                return TypedResults.Ok(cachedResponse);
+            }
         }
 
         // 4. Resolve & Execute Target Provider with Automatic Failover
@@ -95,6 +134,58 @@ public class AiProxyEndpoints : IEndpointGroup
             try
             {
                 var adapter = adapterFactory.GetAdapter(target.Provider.ProviderType);
+
+                if (request.Stream)
+                {
+                    httpContext.Response.ContentType = "text/event-stream";
+                    httpContext.Response.Headers.CacheControl = "no-cache";
+                    httpContext.Response.Headers.Connection = "keep-alive";
+
+                    var stream = adapter.ExecuteChatCompletionStreamAsync(
+                        target.Provider,
+                        target.Model,
+                        target.DecryptedApiKey,
+                        request,
+                        cancellationToken);
+
+                    var streamedChunkCount = 0;
+                    await foreach (var line in stream.WithCancellation(cancellationToken))
+                    {
+                        var sseChunk = line.StartsWith("data:") ? line : $"data: {line}";
+                        await httpContext.Response.WriteAsync($"{sseChunk}\n\n", cancellationToken);
+                        await httpContext.Response.Body.FlushAsync(cancellationToken);
+                        streamedChunkCount++;
+                    }
+
+                    sw.Stop();
+                    circuitBreaker.RecordSuccess(target.ApiKey.Id);
+
+                    // Queue Async Usage Metering Log
+                    var promptTokensStream = estimatedTokens;
+                    var completionTokensStream = Math.Max(1, streamedChunkCount);
+                    var costUsdStream = (promptTokensStream * target.Model.PromptTokenCostPer1K / 1000m)
+                                        + (completionTokensStream * target.Model.CompletionTokenCostPer1K / 1000m);
+
+                    await meteringChannel.QueueUsageLogAsync(new UsageLogItem(
+                        VirtualKeyId: virtualKey.Id,
+                        ProviderId: target.Provider.Id,
+                        ModelId: target.Model.Id,
+                        RequestedModelAlias: request.Model,
+                        PromptTokens: promptTokensStream,
+                        CompletionTokens: completionTokensStream,
+                        CalculatedCostUsd: costUsdStream,
+                        LatencyMs: sw.ElapsedMilliseconds,
+                        HttpStatusCode: StatusCodes.Status200OK,
+                        IsSuccess: true,
+                        ErrorMessage: null,
+                        ClientIp: httpContext.Connection.RemoteIpAddress?.ToString(),
+                        UserAgent: httpContext.Request.Headers.UserAgent.ToString(),
+                        RequestedAt: DateTimeOffset.UtcNow
+                    ), cancellationToken);
+
+                    return TypedResults.Empty;
+                }
+
                 var response = await adapter.ExecuteChatCompletionAsync(
                     target.Provider,
                     target.Model,
@@ -103,6 +194,10 @@ public class AiProxyEndpoints : IEndpointGroup
                     cancellationToken);
 
                 sw.Stop();
+                circuitBreaker.RecordSuccess(target.ApiKey.Id);
+
+                // Cache response for future semantic matches (24-hour TTL)
+                await semanticCache.SetCachedResponseAsync(semanticKey, response, TimeSpan.FromHours(24), cancellationToken);
 
                 // Queue Async Usage Metering Log (Non-blocking)
                 var promptTokens = response.Usage?.PromptTokens ?? 0;

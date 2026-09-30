@@ -74,7 +74,9 @@ public static class DependencyInjection
             builder.Services.AddDistributedMemoryCache();
         }
 
-        // Virtual Key & Rate Limiting Services
+        // Virtual Key, Rate Limiting, Circuit Breaker & Semantic Cache Services
+        builder.Services.AddSingleton<ICircuitBreakerService, CircuitBreakerService>();
+        builder.Services.AddSingleton<ISemanticCacheService, SemanticCacheService>();
         builder.Services.AddScoped<IVirtualKeyService, VirtualKeyService>();
         builder.Services.AddSingleton<IRateLimitService, RateLimitService>();
 
