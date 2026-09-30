@@ -13,6 +13,7 @@ public class VirtualKeyDto
     public DateTimeOffset? ExpiresAt { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset? LastUsedAt { get; set; }
+    public string? AllowedModelAliases { get; set; }
 }
 
 public class CreatedVirtualKeyResponseDto
@@ -21,4 +22,5 @@ public class CreatedVirtualKeyResponseDto
     public string Name { get; set; } = string.Empty;
     public string RawVirtualKey { get; set; } = string.Empty;
     public string KeyMask { get; set; } = string.Empty;
+    public string? AllowedModelAliases { get; set; }
 }

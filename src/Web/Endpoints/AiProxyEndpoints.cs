@@ -46,6 +46,15 @@ public class AiProxyEndpoints : IEndpointGroup
             return TypedResults.Unauthorized();
         }
 
+        // 2.5 Model Access Control Check per Virtual Key
+        if (!virtualKey.IsModelAllowed(request.Model))
+        {
+            return TypedResults.Problem(
+                detail: $"Virtual Key '{virtualKey.Name}' is not authorized to access model '{request.Model}'.",
+                statusCode: StatusCodes.Status403Forbidden,
+                title: "Model Access Forbidden");
+        }
+
         // 3. Rate Limit Check (RPM & TPM)
         var estimatedTokens = request.MaxTokens ?? 500;
         var rateLimitResult = await rateLimitService.CheckAndRecordAsync(
