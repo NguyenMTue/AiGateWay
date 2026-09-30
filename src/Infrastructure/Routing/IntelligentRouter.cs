@@ -19,8 +19,13 @@ public class IntelligentRouter : IIntelligentRouter
 
     public async Task<RouteExecutionTarget> ResolveTargetAsync(
         string requestedModelAlias,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IEnumerable<int>? excludeApiKeyIds = null)
     {
+        var excludedSet = excludeApiKeyIds != null 
+            ? new HashSet<int>(excludeApiKeyIds) 
+            : new HashSet<int>();
+
         // 1. Check for explicit RouteRule matching alias
         var rule = await _context.RouteRules
             .Include(r => r.PrimaryModel)
@@ -35,7 +40,7 @@ public class IntelligentRouter : IIntelligentRouter
 
         if (rule != null)
         {
-            var primaryTarget = PickKeyAndBuildTarget(rule.PrimaryModel, rule.RoutingStrategy, rule);
+            var primaryTarget = PickKeyAndBuildTarget(rule.PrimaryModel, rule.RoutingStrategy, rule, excludedSet);
             if (primaryTarget != null)
             {
                 return primaryTarget;
@@ -44,7 +49,7 @@ public class IntelligentRouter : IIntelligentRouter
             // If primary target has no active keys, try fallback model
             if (rule.FallbackModel != null)
             {
-                var fallbackTarget = PickKeyAndBuildTarget(rule.FallbackModel, rule.RoutingStrategy, rule);
+                var fallbackTarget = PickKeyAndBuildTarget(rule.FallbackModel, rule.RoutingStrategy, rule, excludedSet);
                 if (fallbackTarget != null)
                 {
                     return fallbackTarget;
@@ -63,7 +68,7 @@ public class IntelligentRouter : IIntelligentRouter
 
         foreach (var model in directModels)
         {
-            var target = PickKeyAndBuildTarget(model, RoutingStrategy.Priority, null);
+            var target = PickKeyAndBuildTarget(model, RoutingStrategy.Priority, null, excludedSet);
             if (target != null)
             {
                 return target;
@@ -83,7 +88,7 @@ public class IntelligentRouter : IIntelligentRouter
 
         if (key == null) return;
 
-        if (httpStatusCode == 429) // Rate limit hit
+        if (httpStatusCode == 429 || httpStatusCode >= 500) // Rate limit hit or Server Error (500, 502, 503, 504)
         {
             // Place key on 5-minute cooldown
             key.CooldownUntil = DateTimeOffset.UtcNow.AddMinutes(5);
@@ -100,14 +105,18 @@ public class IntelligentRouter : IIntelligentRouter
     private RouteExecutionTarget? PickKeyAndBuildTarget(
         AiModel model,
         RoutingStrategy strategy,
-        RouteRule? rule)
+        RouteRule? rule,
+        HashSet<int> excludedKeyIds)
     {
         if (!model.IsActive || !model.Provider.IsActive)
             return null;
 
         var now = DateTimeOffset.UtcNow;
         var validKeys = model.Provider.ApiKeys
-            .Where(k => k.IsActive && !k.IsExhausted && (k.CooldownUntil == null || k.CooldownUntil <= now))
+            .Where(k => k.IsActive 
+                        && !k.IsExhausted 
+                        && (k.CooldownUntil == null || k.CooldownUntil <= now)
+                        && !excludedKeyIds.Contains(k.Id))
             .ToList();
 
         if (validKeys.Count == 0)
