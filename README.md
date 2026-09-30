@@ -49,7 +49,7 @@ Tuy nhiên, việc kết nối trực tiếp từ Game Client (Unity/Unreal Engi
 ```mermaid
 flowchart TD
     subgraph Clients["Clients & Game Engines"]
-        UnityGame["Unity 2D / 3D Game Engine"]
+        UnityGame["Unity 2D / 3D Engine"]
         UnrealApp["Unreal Engine / Mobile App"]
         MockClient["Mock Client Simulator"]
         WebApp["Management Dashboard"]
@@ -59,31 +59,35 @@ flowchart TD
         AuthModule["Auth Module (/auth)"]
         ProxyModule["AI Proxy (/v1/chat/completions)"]
         Router["Intelligent Router (Priority, Cost, Latency & Failover)"]
-        Metering["Async Usage Metering Channel"]
+        Metering["Async Metering Channel"]
         AnalyticsModule["Analytics Module (/api/analytics)"]
-        RateLimiter["Distributed Rate Limit Service"]
+        RateLimiter["Distributed Rate Limiter"]
     end
 
     subgraph Infrastructure["Database & Providers"]
         DB[(PostgreSQL Database)]
-        RedisCache[(Redis Distributed Cache)]
+        RedisCache[(Redis Cache)]
         OpenAI["OpenAI API"]
         Gemini["Google Gemini API"]
         Anthropic["Anthropic Claude API"]
     end
 
-    UnityGame -->|POST /auth & /v1/chat/completions| Gateway
-    UnrealApp -->|POST /v1/chat/completions| Gateway
-    MockClient -->|Telemetry & Stress Test| Gateway
-    WebApp -->|GET /api/analytics| Gateway
+    UnityGame -->|POST /auth| AuthModule
+    UnityGame -->|POST /v1/chat/completions| ProxyModule
+    UnrealApp -->|POST /v1/chat/completions| ProxyModule
+    MockClient -->|Telemetry & Stress Test| ProxyModule
+    WebApp -->|GET /api/analytics| AnalyticsModule
 
     ProxyModule --> RateLimiter
-    RateLimiter -->|Check RPM/TPM| RedisCache
+    RateLimiter -->|RPM / TPM Check| RedisCache
+
     ProxyModule --> Router
     Router -->|1. Primary Model| OpenAI
-    Router -->|2. Automatic Fallback on Fail| Gemini
+    Router -->|2. Auto Failover| Gemini
+    Router -.->|3. Fallback Model| Anthropic
+
     ProxyModule --> Metering
-    Metering -->|Background Batch Insert| DB
+    Metering -->|Async Batch Insert| DB
     AuthModule --> DB
     AnalyticsModule --> DB
 ```
