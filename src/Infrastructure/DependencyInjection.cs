@@ -54,8 +54,25 @@ public static class DependencyInjection
         // Encryption Service
         builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
 
-        // Memory Cache for Rate Limiting
+        // Memory Cache for Rate Limiting Fallback
         builder.Services.AddMemoryCache();
+
+        // Distributed Cache for Distributed Rate Limiting (Redis or Memory Fallback)
+        var redisConnectionString = builder.Configuration.GetConnectionString("redis") 
+            ?? builder.Configuration.GetConnectionString("Redis");
+
+        if (!string.IsNullOrWhiteSpace(redisConnectionString))
+        {
+            builder.Services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = redisConnectionString;
+                options.InstanceName = "AiGateway:";
+            });
+        }
+        else
+        {
+            builder.Services.AddDistributedMemoryCache();
+        }
 
         // Virtual Key & Rate Limiting Services
         builder.Services.AddScoped<IVirtualKeyService, VirtualKeyService>();
