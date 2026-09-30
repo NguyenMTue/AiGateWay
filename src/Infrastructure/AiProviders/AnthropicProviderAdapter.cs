@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -53,6 +54,52 @@ public class AnthropicProviderAdapter : IAiProviderAdapter
 
         var anthropicRes = JsonSerializer.Deserialize<AnthropicResponse>(responseContent);
         return MapToOpenAiResponse(anthropicRes, request.Model);
+    }
+
+    public async IAsyncEnumerable<string> ExecuteChatCompletionStreamAsync(
+        AiProvider provider,
+        AiModel model,
+        string apiKey,
+        ChatCompletionRequest request,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var anthropicReq = MapToAnthropicRequest(model.ModelId, request);
+        anthropicReq.Stream = true;
+
+        var baseUrl = provider.BaseUrl.TrimEnd('/');
+        var endpointUrl = $"{baseUrl}/v1/messages";
+
+        var jsonBody = JsonSerializer.Serialize(anthropicReq);
+        var httpRequest = new HttpRequestMessage(HttpMethod.Post, endpointUrl)
+        {
+            Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+        };
+
+        httpRequest.Headers.Add("x-api-key", apiKey);
+        httpRequest.Headers.Add("anthropic-version", "2023-06-01");
+
+        var response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new HttpRequestException(
+                $"Anthropic provider error ({(int)response.StatusCode}): {responseContent}",
+                null,
+                response.StatusCode);
+        }
+
+        using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+
+        string? line;
+        while ((line = await reader.ReadLineAsync(cancellationToken)) != null)
+        {
+            if (!string.IsNullOrWhiteSpace(line))
+            {
+                yield return line;
+            }
+        }
     }
 
     private static AnthropicRequest MapToAnthropicRequest(string modelId, ChatCompletionRequest request)
@@ -138,6 +185,9 @@ public class AnthropicProviderAdapter : IAiProviderAdapter
 
         [JsonPropertyName("temperature")]
         public double? Temperature { get; set; }
+
+        [JsonPropertyName("stream")]
+        public bool? Stream { get; set; }
     }
 
     private class AnthropicMessage

@@ -20,7 +20,7 @@ public class AiProxyEndpoints : IEndpointGroup
         groupBuilder.MapGet("/models", GetModels);
     }
 
-    public static async Task<Results<Ok<ChatCompletionResponse>, UnauthorizedHttpResult, ProblemHttpResult>> CreateChatCompletion(
+    public static async Task<IResult> CreateChatCompletion(
         [FromHeader(Name = "Authorization")] string? authorization,
         [FromHeader(Name = "x-api-key")] string? xApiKey,
         [FromBody] ChatCompletionRequest request,
@@ -95,6 +95,57 @@ public class AiProxyEndpoints : IEndpointGroup
             try
             {
                 var adapter = adapterFactory.GetAdapter(target.Provider.ProviderType);
+
+                if (request.Stream)
+                {
+                    httpContext.Response.ContentType = "text/event-stream";
+                    httpContext.Response.Headers.CacheControl = "no-cache";
+                    httpContext.Response.Headers.Connection = "keep-alive";
+
+                    var stream = adapter.ExecuteChatCompletionStreamAsync(
+                        target.Provider,
+                        target.Model,
+                        target.DecryptedApiKey,
+                        request,
+                        cancellationToken);
+
+                    var streamedChunkCount = 0;
+                    await foreach (var line in stream.WithCancellation(cancellationToken))
+                    {
+                        var sseChunk = line.StartsWith("data:") ? line : $"data: {line}";
+                        await httpContext.Response.WriteAsync($"{sseChunk}\n\n", cancellationToken);
+                        await httpContext.Response.Body.FlushAsync(cancellationToken);
+                        streamedChunkCount++;
+                    }
+
+                    sw.Stop();
+
+                    // Queue Async Usage Metering Log
+                    var promptTokensStream = estimatedTokens;
+                    var completionTokensStream = Math.Max(1, streamedChunkCount);
+                    var costUsdStream = (promptTokensStream * target.Model.PromptTokenCostPer1K / 1000m)
+                                        + (completionTokensStream * target.Model.CompletionTokenCostPer1K / 1000m);
+
+                    await meteringChannel.QueueUsageLogAsync(new UsageLogItem(
+                        VirtualKeyId: virtualKey.Id,
+                        ProviderId: target.Provider.Id,
+                        ModelId: target.Model.Id,
+                        RequestedModelAlias: request.Model,
+                        PromptTokens: promptTokensStream,
+                        CompletionTokens: completionTokensStream,
+                        CalculatedCostUsd: costUsdStream,
+                        LatencyMs: sw.ElapsedMilliseconds,
+                        HttpStatusCode: StatusCodes.Status200OK,
+                        IsSuccess: true,
+                        ErrorMessage: null,
+                        ClientIp: httpContext.Connection.RemoteIpAddress?.ToString(),
+                        UserAgent: httpContext.Request.Headers.UserAgent.ToString(),
+                        RequestedAt: DateTimeOffset.UtcNow
+                    ), cancellationToken);
+
+                    return TypedResults.Empty;
+                }
+
                 var response = await adapter.ExecuteChatCompletionAsync(
                     target.Provider,
                     target.Model,

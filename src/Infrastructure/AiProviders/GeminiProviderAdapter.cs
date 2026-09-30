@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -50,6 +51,48 @@ public class GeminiProviderAdapter : IAiProviderAdapter
 
         var geminiRes = JsonSerializer.Deserialize<GeminiResponse>(responseContent);
         return MapToOpenAiResponse(geminiRes, request.Model);
+    }
+
+    public async IAsyncEnumerable<string> ExecuteChatCompletionStreamAsync(
+        AiProvider provider,
+        AiModel model,
+        string apiKey,
+        ChatCompletionRequest request,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var geminiReq = MapToGeminiRequest(request);
+
+        var baseUrl = provider.BaseUrl.TrimEnd('/');
+        var endpointUrl = $"{baseUrl}/models/{model.ModelId}:streamGenerateContent?alt=sse&key={apiKey}";
+
+        var jsonBody = JsonSerializer.Serialize(geminiReq);
+        var httpRequest = new HttpRequestMessage(HttpMethod.Post, endpointUrl)
+        {
+            Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+        };
+
+        var response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new HttpRequestException(
+                $"Gemini provider error ({(int)response.StatusCode}): {responseContent}",
+                null,
+                response.StatusCode);
+        }
+
+        using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+
+        string? line;
+        while ((line = await reader.ReadLineAsync(cancellationToken)) != null)
+        {
+            if (!string.IsNullOrWhiteSpace(line))
+            {
+                yield return line;
+            }
+        }
     }
 
     private static GeminiRequest MapToGeminiRequest(ChatCompletionRequest request)
