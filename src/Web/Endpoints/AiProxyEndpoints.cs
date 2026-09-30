@@ -29,6 +29,7 @@ public class AiProxyEndpoints : IEndpointGroup
         IIntelligentRouter router,
         IAiProviderAdapterFactory adapterFactory,
         IUsageMeteringChannel meteringChannel,
+        ICircuitBreakerService circuitBreaker,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
@@ -128,6 +129,7 @@ public class AiProxyEndpoints : IEndpointGroup
                     }
 
                     sw.Stop();
+                    circuitBreaker.RecordSuccess(target.ApiKey.Id);
 
                     // Queue Async Usage Metering Log
                     var promptTokensStream = estimatedTokens;
@@ -163,6 +165,7 @@ public class AiProxyEndpoints : IEndpointGroup
                     cancellationToken);
 
                 sw.Stop();
+                circuitBreaker.RecordSuccess(target.ApiKey.Id);
 
                 // Queue Async Usage Metering Log (Non-blocking)
                 var promptTokens = response.Usage?.PromptTokens ?? 0;
