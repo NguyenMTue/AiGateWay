@@ -14,7 +14,8 @@ public interface IIntelligentRouter
 {
     Task<RouteExecutionTarget> ResolveTargetAsync(
         string requestedModelAlias,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        IEnumerable<int>? excludeApiKeyIds = null);
 
     Task HandleProviderFailureAsync(
         int providerApiKeyId,

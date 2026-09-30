@@ -63,90 +63,136 @@ public class AiProxyEndpoints : IEndpointGroup
                 title: "Rate Limit Exceeded");
         }
 
-        // 4. Resolve Target Provider, Model & API Key via Intelligent Router
-        RouteExecutionTarget target;
-        try
+        // 4. Resolve & Execute Target Provider with Automatic Failover
+        var failedKeyIds = new HashSet<int>();
+        const int maxFailoverAttempts = 5;
+        Exception? lastException = null;
+
+        for (var attempt = 1; attempt <= maxFailoverAttempts; attempt++)
         {
-            target = await router.ResolveTargetAsync(request.Model, cancellationToken);
+            RouteExecutionTarget target;
+            try
+            {
+                target = await router.ResolveTargetAsync(request.Model, cancellationToken, failedKeyIds);
+            }
+            catch (InvalidOperationException ex)
+            {
+                if (lastException != null)
+                {
+                    return TypedResults.Problem(
+                        detail: $"All available AI providers failed. Last provider error: {lastException.Message}",
+                        statusCode: StatusCodes.Status503ServiceUnavailable,
+                        title: "All Providers Unavailable");
+                }
+
+                return TypedResults.Problem(
+                    detail: ex.Message,
+                    statusCode: StatusCodes.Status503ServiceUnavailable,
+                    title: "No Available AI Provider");
+            }
+
+            var sw = Stopwatch.StartNew();
+            try
+            {
+                var adapter = adapterFactory.GetAdapter(target.Provider.ProviderType);
+                var response = await adapter.ExecuteChatCompletionAsync(
+                    target.Provider,
+                    target.Model,
+                    target.DecryptedApiKey,
+                    request,
+                    cancellationToken);
+
+                sw.Stop();
+
+                // Queue Async Usage Metering Log (Non-blocking)
+                var promptTokens = response.Usage?.PromptTokens ?? 0;
+                var completionTokens = response.Usage?.CompletionTokens ?? 0;
+                var costUsd = (promptTokens * target.Model.PromptTokenCostPer1K / 1000m)
+                              + (completionTokens * target.Model.CompletionTokenCostPer1K / 1000m);
+
+                await meteringChannel.QueueUsageLogAsync(new UsageLogItem(
+                    VirtualKeyId: virtualKey.Id,
+                    ProviderId: target.Provider.Id,
+                    ModelId: target.Model.Id,
+                    RequestedModelAlias: request.Model,
+                    PromptTokens: promptTokens,
+                    CompletionTokens: completionTokens,
+                    CalculatedCostUsd: costUsd,
+                    LatencyMs: sw.ElapsedMilliseconds,
+                    HttpStatusCode: StatusCodes.Status200OK,
+                    IsSuccess: true,
+                    ErrorMessage: null,
+                    ClientIp: httpContext.Connection.RemoteIpAddress?.ToString(),
+                    UserAgent: httpContext.Request.Headers.UserAgent.ToString(),
+                    RequestedAt: DateTimeOffset.UtcNow
+                ), cancellationToken);
+
+                return TypedResults.Ok(response);
+            }
+            catch (HttpRequestException ex)
+            {
+                sw.Stop();
+                var statusCode = (int)(ex.StatusCode ?? System.Net.HttpStatusCode.InternalServerError);
+                lastException = ex;
+
+                // Handle Failover / Cooldown for the failed key
+                await router.HandleProviderFailureAsync(target.ApiKey.Id, statusCode, cancellationToken);
+                failedKeyIds.Add(target.ApiKey.Id);
+
+                // Queue failure log asynchronously for this attempt
+                await meteringChannel.QueueUsageLogAsync(new UsageLogItem(
+                    VirtualKeyId: virtualKey.Id,
+                    ProviderId: target.Provider.Id,
+                    ModelId: target.Model.Id,
+                    RequestedModelAlias: request.Model,
+                    PromptTokens: 0,
+                    CompletionTokens: 0,
+                    CalculatedCostUsd: 0,
+                    LatencyMs: sw.ElapsedMilliseconds,
+                    HttpStatusCode: statusCode,
+                    IsSuccess: false,
+                    ErrorMessage: ex.Message,
+                    ClientIp: httpContext.Connection.RemoteIpAddress?.ToString(),
+                    UserAgent: httpContext.Request.Headers.UserAgent.ToString(),
+                    RequestedAt: DateTimeOffset.UtcNow
+                ), cancellationToken);
+
+                // Failover loop will continue to try the next available provider/key (e.g. FallbackModel)
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                var statusCode = StatusCodes.Status500InternalServerError;
+                lastException = ex;
+
+                await router.HandleProviderFailureAsync(target.ApiKey.Id, statusCode, cancellationToken);
+                failedKeyIds.Add(target.ApiKey.Id);
+
+                await meteringChannel.QueueUsageLogAsync(new UsageLogItem(
+                    VirtualKeyId: virtualKey.Id,
+                    ProviderId: target.Provider.Id,
+                    ModelId: target.Model.Id,
+                    RequestedModelAlias: request.Model,
+                    PromptTokens: 0,
+                    CompletionTokens: 0,
+                    CalculatedCostUsd: 0,
+                    LatencyMs: sw.ElapsedMilliseconds,
+                    HttpStatusCode: statusCode,
+                    IsSuccess: false,
+                    ErrorMessage: ex.Message,
+                    ClientIp: httpContext.Connection.RemoteIpAddress?.ToString(),
+                    UserAgent: httpContext.Request.Headers.UserAgent.ToString(),
+                    RequestedAt: DateTimeOffset.UtcNow
+                ), cancellationToken);
+
+                // Failover loop will continue to try the next available provider/key
+            }
         }
-        catch (InvalidOperationException ex)
-        {
-            return TypedResults.Problem(
-                detail: ex.Message,
-                statusCode: StatusCodes.Status503ServiceUnavailable,
-                title: "No Available AI Provider");
-        }
 
-        // 5. Execute Provider Adapter
-        var sw = Stopwatch.StartNew();
-        try
-        {
-            var adapter = adapterFactory.GetAdapter(target.Provider.ProviderType);
-            var response = await adapter.ExecuteChatCompletionAsync(
-                target.Provider,
-                target.Model,
-                target.DecryptedApiKey,
-                request,
-                cancellationToken);
-
-            sw.Stop();
-
-            // 6. Queue Async Usage Metering Log (Non-blocking)
-            var promptTokens = response.Usage?.PromptTokens ?? 0;
-            var completionTokens = response.Usage?.CompletionTokens ?? 0;
-            var costUsd = (promptTokens * target.Model.PromptTokenCostPer1K / 1000m)
-                          + (completionTokens * target.Model.CompletionTokenCostPer1K / 1000m);
-
-            await meteringChannel.QueueUsageLogAsync(new UsageLogItem(
-                VirtualKeyId: virtualKey.Id,
-                ProviderId: target.Provider.Id,
-                ModelId: target.Model.Id,
-                RequestedModelAlias: request.Model,
-                PromptTokens: promptTokens,
-                CompletionTokens: completionTokens,
-                CalculatedCostUsd: costUsd,
-                LatencyMs: sw.ElapsedMilliseconds,
-                HttpStatusCode: StatusCodes.Status200OK,
-                IsSuccess: true,
-                ErrorMessage: null,
-                ClientIp: httpContext.Connection.RemoteIpAddress?.ToString(),
-                UserAgent: httpContext.Request.Headers.UserAgent.ToString(),
-                RequestedAt: DateTimeOffset.UtcNow
-            ), cancellationToken);
-
-            return TypedResults.Ok(response);
-        }
-        catch (HttpRequestException ex)
-        {
-            sw.Stop();
-            var statusCode = (int)(ex.StatusCode ?? System.Net.HttpStatusCode.InternalServerError);
-
-            // Handle Failover / Cooldown for the failed key
-            await router.HandleProviderFailureAsync(target.ApiKey.Id, statusCode, cancellationToken);
-
-            // Queue failure log asynchronously
-            await meteringChannel.QueueUsageLogAsync(new UsageLogItem(
-                VirtualKeyId: virtualKey.Id,
-                ProviderId: target.Provider.Id,
-                ModelId: target.Model.Id,
-                RequestedModelAlias: request.Model,
-                PromptTokens: 0,
-                CompletionTokens: 0,
-                CalculatedCostUsd: 0,
-                LatencyMs: sw.ElapsedMilliseconds,
-                HttpStatusCode: statusCode,
-                IsSuccess: false,
-                ErrorMessage: ex.Message,
-                ClientIp: httpContext.Connection.RemoteIpAddress?.ToString(),
-                UserAgent: httpContext.Request.Headers.UserAgent.ToString(),
-                RequestedAt: DateTimeOffset.UtcNow
-            ), cancellationToken);
-
-            return TypedResults.Problem(
-                detail: $"Upstream AI Provider Error: {ex.Message}",
-                statusCode: statusCode,
-                title: "Provider Execution Failure");
-        }
+        return TypedResults.Problem(
+            detail: $"Exceeded maximum failover attempts ({maxFailoverAttempts}). Last error: {lastException?.Message}",
+            statusCode: StatusCodes.Status503ServiceUnavailable,
+            title: "Provider Execution Failure");
     }
 
     public static async Task<Ok<OpenAiModelsListResponse>> GetModels(
