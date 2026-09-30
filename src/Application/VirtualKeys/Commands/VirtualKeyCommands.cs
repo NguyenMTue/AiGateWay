@@ -11,7 +11,8 @@ public record CreateVirtualKeyCommand(
     int? RateLimitTpm,
     decimal? MaxBudgetUsd,
     DateTimeOffset? ExpiresAt,
-    string KeyPrefix = "gw-live-"
+    string KeyPrefix = "gw-live-",
+    string? AllowedModelAliases = null
 ) : IRequest<CreatedVirtualKeyResponseDto>;
 
 public class CreateVirtualKeyCommandHandler : IRequestHandler<CreateVirtualKeyCommand, CreatedVirtualKeyResponseDto>
@@ -40,6 +41,7 @@ public class CreateVirtualKeyCommandHandler : IRequestHandler<CreateVirtualKeyCo
             MaxBudgetUsd = request.MaxBudgetUsd,
             CurrentUsageUsd = 0.00m,
             ExpiresAt = request.ExpiresAt,
+            AllowedModelAliases = request.AllowedModelAliases,
             IsActive = true
         };
 
@@ -51,7 +53,8 @@ public class CreateVirtualKeyCommandHandler : IRequestHandler<CreateVirtualKeyCo
             Id = entity.Id,
             Name = entity.Name,
             RawVirtualKey = rawKey,
-            KeyMask = mask
+            KeyMask = mask,
+            AllowedModelAliases = entity.AllowedModelAliases
         };
     }
 }
@@ -63,7 +66,8 @@ public record UpdateVirtualKeyCommand(
     int? RateLimitTpm,
     decimal? MaxBudgetUsd,
     DateTimeOffset? ExpiresAt,
-    bool IsActive
+    bool IsActive,
+    string? AllowedModelAliases = null
 ) : IRequest<bool>;
 
 public class UpdateVirtualKeyCommandHandler : IRequestHandler<UpdateVirtualKeyCommand, bool>
@@ -88,6 +92,7 @@ public class UpdateVirtualKeyCommandHandler : IRequestHandler<UpdateVirtualKeyCo
         entity.MaxBudgetUsd = request.MaxBudgetUsd;
         entity.ExpiresAt = request.ExpiresAt;
         entity.IsActive = request.IsActive;
+        entity.AllowedModelAliases = request.AllowedModelAliases;
 
         await _context.SaveChangesAsync(cancellationToken);
         return true;

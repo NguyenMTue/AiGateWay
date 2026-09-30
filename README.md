@@ -40,6 +40,10 @@ Tuy nhiên, việc kết nối trực tiếp từ Game Client (Unity/Unreal Engi
 * **🔒 Phân quyền Mô hình (Model Whitelisting per Key)**:
   * Cho phép gán danh sách các mô hình được phép truy cập (`AllowedModelAliases`) cho từng Virtual Key (ví dụ: Key NPC thường chỉ được gọi `gpt-4o-mini`, Key NPC Boss được phép gọi `gpt-4o`). Trả về `403 Forbidden` khi truy cập trái phép.
 
+* **📊 Quản trị & Giám sát Thời gian Thực (Real-time Game Telemetry & Analytics)**:
+  * Báo cáo chính xác số lượng Prompt/Completion Tokens và chi phí ($ USD) tiêu tốn theo từng ngày/tháng, từng Server Game hoặc từng Virtual Key.
+  * Giám sát độ khỏe (Provider Health), độ trễ (Latency ms) và tỷ lệ lỗi của từng nhà cung cấp AI.
+
 ---
 
 ## 🏗️ 2. Sơ đồ Kiến trúc Hệ thống (Architecture Diagram)
