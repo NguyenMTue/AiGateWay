@@ -40,9 +40,24 @@ public class GetCostAndTokenUsageQueryHandler : IRequestHandler<GetCostAndTokenU
             query = query.Where(r => r.AiProviderId == request.AiProviderId.Value);
         }
 
-        var logs = await query.ToListAsync(cancellationToken);
+        var totalPromptTokens = await query.SumAsync(x => (long)x.PromptTokens, cancellationToken);
+        var totalCompletionTokens = await query.SumAsync(x => (long)x.CompletionTokens, cancellationToken);
+        var totalTokens = await query.SumAsync(x => (long)x.TotalTokens, cancellationToken);
+        var totalCostUsd = await query.SumAsync(x => x.CalculatedCostUsd, cancellationToken);
+        var totalRequests = await query.CountAsync(cancellationToken);
 
         var isMonth = string.Equals(request.GroupBy, "month", StringComparison.OrdinalIgnoreCase);
+
+        var logs = await query
+            .Select(x => new 
+            { 
+                x.PromptTokens, 
+                x.CompletionTokens, 
+                x.TotalTokens, 
+                x.CalculatedCostUsd, 
+                x.RequestedAt 
+            })
+            .ToListAsync(cancellationToken);
 
         var groupedSeries = logs
             .GroupBy(l => isMonth 
@@ -62,11 +77,11 @@ public class GetCostAndTokenUsageQueryHandler : IRequestHandler<GetCostAndTokenU
 
         return new CostAndTokenUsageReportDto
         {
-            TotalPromptTokens = logs.Sum(x => (long)x.PromptTokens),
-            TotalCompletionTokens = logs.Sum(x => (long)x.CompletionTokens),
-            TotalTokens = logs.Sum(x => (long)x.TotalTokens),
-            TotalCostUsd = logs.Sum(x => x.CalculatedCostUsd),
-            TotalRequests = logs.Count,
+            TotalPromptTokens = totalPromptTokens,
+            TotalCompletionTokens = totalCompletionTokens,
+            TotalTokens = totalTokens,
+            TotalCostUsd = totalCostUsd,
+            TotalRequests = totalRequests,
             TimeSeries = groupedSeries
         };
     }
