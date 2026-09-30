@@ -30,6 +30,7 @@ public class AiProxyEndpoints : IEndpointGroup
         IAiProviderAdapterFactory adapterFactory,
         IUsageMeteringChannel meteringChannel,
         ICircuitBreakerService circuitBreaker,
+        ISemanticCacheService semanticCache,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
@@ -71,6 +72,34 @@ public class AiProxyEndpoints : IEndpointGroup
                 detail: rateLimitResult.Reason,
                 statusCode: StatusCodes.Status429TooManyRequests,
                 title: "Rate Limit Exceeded");
+        }
+
+        // 3.5 Semantic Response Cache Check (for non-streaming requests)
+        var semanticKey = semanticCache.GenerateSemanticKey(request.Model, request.Messages);
+        if (!request.Stream)
+        {
+            var cachedResponse = await semanticCache.GetCachedResponseAsync(semanticKey, cancellationToken);
+            if (cachedResponse != null)
+            {
+                await meteringChannel.QueueUsageLogAsync(new UsageLogItem(
+                    VirtualKeyId: virtualKey.Id,
+                    ProviderId: 0,
+                    ModelId: 0,
+                    RequestedModelAlias: request.Model,
+                    PromptTokens: 0,
+                    CompletionTokens: 0,
+                    CalculatedCostUsd: 0.00m,
+                    LatencyMs: 1,
+                    HttpStatusCode: StatusCodes.Status200OK,
+                    IsSuccess: true,
+                    ErrorMessage: "Semantic Cache Hit",
+                    ClientIp: httpContext.Connection.RemoteIpAddress?.ToString(),
+                    UserAgent: httpContext.Request.Headers.UserAgent.ToString(),
+                    RequestedAt: DateTimeOffset.UtcNow
+                ), cancellationToken);
+
+                return TypedResults.Ok(cachedResponse);
+            }
         }
 
         // 4. Resolve & Execute Target Provider with Automatic Failover
@@ -166,6 +195,9 @@ public class AiProxyEndpoints : IEndpointGroup
 
                 sw.Stop();
                 circuitBreaker.RecordSuccess(target.ApiKey.Id);
+
+                // Cache response for future semantic matches (24-hour TTL)
+                await semanticCache.SetCachedResponseAsync(semanticKey, response, TimeSpan.FromHours(24), cancellationToken);
 
                 // Queue Async Usage Metering Log (Non-blocking)
                 var promptTokens = response.Usage?.PromptTokens ?? 0;

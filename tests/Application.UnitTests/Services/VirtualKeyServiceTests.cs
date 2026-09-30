@@ -179,7 +179,7 @@ public class VirtualKeyServiceTests
     {
         var vk = new VirtualKey { AllowedModelAliases = "gpt-4o-mini, gemini-1.5-flash" };
         vk.IsModelAllowed("gpt-4o-mini").ShouldBeTrue();
-        vk.IsModelAllowed("GEMINI-1.5-FLASH").ShouldBeTrue(); // Case insensitive
+        vk.IsModelAllowed("GEMINI-1.5-FLASH").ShouldBeTrue();
     }
 
     [Test]
