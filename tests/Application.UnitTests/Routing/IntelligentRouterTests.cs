@@ -190,6 +190,65 @@ public class IntelligentRouterTests
     }
 
     [Test]
+    public async Task HandleProviderFailureAsync_When401_ShouldMarkKeyExhaustedAndInactive()
+    {
+        // Arrange
+        var key = new ProviderApiKey { Id = 6, EncryptedApiKey = "key6", IsActive = true, IsExhausted = false };
+        var keys = new List<ProviderApiKey> { key }.ToMockDbSet();
+        _mockContext.Setup(c => c.ProviderApiKeys).Returns(keys.Object);
+
+        // Act
+        await _router.HandleProviderFailureAsync(6, 401, CancellationToken.None);
+
+        // Assert
+        key.IsExhausted.ShouldBeTrue();
+        key.IsActive.ShouldBeFalse();
+        _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task ResolveTargetAsync_WithMultipleKeys_ShouldPickKeyByPriority()
+    {
+        // Arrange: Provider has Key1 (Priority=2) and Key2 (Priority=1)
+        var keyLowPriority = new ProviderApiKey { Id = 10, EncryptedApiKey = "low", IsActive = true, Priority = 2 };
+        var keyHighPriority = new ProviderApiKey { Id = 11, EncryptedApiKey = "high", IsActive = true, Priority = 1 };
+
+        var model = new AiModel
+        {
+            Id = 30,
+            Name = "MultiKey Model",
+            ModelId = "multikey-model",
+            Alias = "multikey-model",
+            IsActive = true,
+            Provider = new AiProvider { Id = 300, Name = "TestProvider", IsActive = true, ApiKeys = new List<ProviderApiKey> { keyLowPriority, keyHighPriority } }
+        };
+
+        var routeRule = new RouteRule
+        {
+            Id = 3,
+            Name = "Priority Rule",
+            TargetModelAlias = "priority-test",
+            RoutingStrategy = RoutingStrategy.Priority,
+            PrimaryModel = model,
+            IsActive = true
+        };
+
+        var routeRules = new List<RouteRule> { routeRule }.ToMockDbSet();
+        var aiModels = new List<AiModel> { model }.ToMockDbSet();
+
+        _mockContext.Setup(c => c.RouteRules).Returns(routeRules.Object);
+        _mockContext.Setup(c => c.AiModels).Returns(aiModels.Object);
+
+        // Act
+        var target = await _router.ResolveTargetAsync("priority-test", CancellationToken.None);
+
+        // Assert: Key with Priority = 1 (Id = 11) should be selected over Priority = 2
+        target.ShouldNotBeNull();
+        target.ApiKey.Id.ShouldBe(11);
+        target.DecryptedApiKey.ShouldBe("decrypted-high");
+    }
+
+    [Test]
     public async Task ResolveTargetAsync_WithLowestCostStrategy_ShouldPickCheapestModel()
     {
         // Arrange: Primary model is expensive, Fallback model is cheaper
