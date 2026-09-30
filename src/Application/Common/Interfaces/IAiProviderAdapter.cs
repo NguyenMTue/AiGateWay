@@ -14,4 +14,11 @@ public interface IAiProviderAdapter
         string apiKey,
         ChatCompletionRequest request,
         CancellationToken cancellationToken);
+
+    IAsyncEnumerable<string> ExecuteChatCompletionStreamAsync(
+        AiProvider provider,
+        AiModel model,
+        string apiKey,
+        ChatCompletionRequest request,
+        CancellationToken cancellationToken);
 }
