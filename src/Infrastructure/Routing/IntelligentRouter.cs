@@ -9,12 +9,17 @@ public class IntelligentRouter : IIntelligentRouter
 {
     private readonly IApplicationDbContext _context;
     private readonly IEncryptionService _encryptionService;
+    private readonly ICircuitBreakerService _circuitBreaker;
     private static readonly Random _random = new();
 
-    public IntelligentRouter(IApplicationDbContext context, IEncryptionService encryptionService)
+    public IntelligentRouter(
+        IApplicationDbContext context,
+        IEncryptionService encryptionService,
+        ICircuitBreakerService circuitBreaker)
     {
         _context = context;
         _encryptionService = encryptionService;
+        _circuitBreaker = circuitBreaker;
     }
 
     public async Task<RouteExecutionTarget> ResolveTargetAsync(
@@ -113,6 +118,9 @@ public class IntelligentRouter : IIntelligentRouter
         int httpStatusCode,
         CancellationToken cancellationToken)
     {
+        // Record failure in Circuit Breaker
+        _circuitBreaker.RecordFailure(providerApiKeyId, httpStatusCode);
+
         var key = await _context.ProviderApiKeys
             .FirstOrDefaultAsync(k => k.Id == providerApiKeyId, cancellationToken);
 
@@ -146,6 +154,7 @@ public class IntelligentRouter : IIntelligentRouter
             .Where(k => k.IsActive 
                         && !k.IsExhausted 
                         && (k.CooldownUntil == null || k.CooldownUntil <= now)
+                        && !_circuitBreaker.IsCircuitOpen(k.Id)
                         && !excludedKeyIds.Contains(k.Id))
             .ToList();
 

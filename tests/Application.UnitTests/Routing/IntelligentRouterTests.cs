@@ -101,6 +101,7 @@ public class IntelligentRouterTests
 {
     private Mock<IApplicationDbContext> _mockContext = null!;
     private Mock<IEncryptionService> _mockEncryption = null!;
+    private Mock<ICircuitBreakerService> _mockCircuitBreaker = null!;
     private IntelligentRouter _router = null!;
 
     [SetUp]
@@ -108,9 +109,10 @@ public class IntelligentRouterTests
     {
         _mockContext = new Mock<IApplicationDbContext>();
         _mockEncryption = new Mock<IEncryptionService>();
+        _mockCircuitBreaker = new Mock<ICircuitBreakerService>();
         _mockEncryption.Setup(e => e.Decrypt(It.IsAny<string>())).Returns<string>(s => "decrypted-" + s);
 
-        _router = new IntelligentRouter(_mockContext.Object, _mockEncryption.Object);
+        _router = new IntelligentRouter(_mockContext.Object, _mockEncryption.Object, _mockCircuitBreaker.Object);
     }
 
     [Test]
@@ -298,5 +300,55 @@ public class IntelligentRouterTests
         target.ShouldNotBeNull();
         target.Model.Name.ShouldBe("Gemini 1.5 Flash");
         target.ApiKey.Id.ShouldBe(2);
+    }
+
+    [Test]
+    public async Task ResolveTargetAsync_WhenPrimaryCircuitIsOpen_ShouldBypassPrimaryAndRouteToFallback()
+    {
+        // Arrange
+        var primaryKey = new ProviderApiKey { Id = 10, EncryptedApiKey = "key10", IsActive = true, Priority = 1 };
+        var primaryModel = new AiModel
+        {
+            Id = 100,
+            Name = "OpenAI GPT-4",
+            Alias = "main-model",
+            IsActive = true,
+            Provider = new AiProvider { Id = 1000, Name = "OpenAI", IsActive = true, ApiKeys = new List<ProviderApiKey> { primaryKey } }
+        };
+
+        var fallbackKey = new ProviderApiKey { Id = 20, EncryptedApiKey = "key20", IsActive = true, Priority = 1 };
+        var fallbackModel = new AiModel
+        {
+            Id = 200,
+            Name = "Gemini Flash",
+            Alias = "gemini-flash",
+            IsActive = true,
+            Provider = new AiProvider { Id = 2000, Name = "Google", IsActive = true, ApiKeys = new List<ProviderApiKey> { fallbackKey } }
+        };
+
+        var routeRule = new RouteRule
+        {
+            Id = 3,
+            TargetModelAlias = "main-model",
+            RoutingStrategy = RoutingStrategy.Priority,
+            PrimaryModel = primaryModel,
+            FallbackModel = fallbackModel,
+            IsActive = true
+        };
+
+        _mockContext.Setup(c => c.RouteRules).Returns(new List<RouteRule> { routeRule }.ToMockDbSet().Object);
+        _mockContext.Setup(c => c.AiModels).Returns(new List<AiModel> { primaryModel, fallbackModel }.ToMockDbSet().Object);
+
+        // Mock Circuit Breaker indicating primaryKey (Id = 10) is OPEN
+        _mockCircuitBreaker.Setup(c => c.IsCircuitOpen(10)).Returns(true);
+        _mockCircuitBreaker.Setup(c => c.IsCircuitOpen(20)).Returns(false);
+
+        // Act
+        var target = await _router.ResolveTargetAsync("main-model", CancellationToken.None);
+
+        // Assert
+        target.ShouldNotBeNull();
+        target.Model.Name.ShouldBe("Gemini Flash");
+        target.ApiKey.Id.ShouldBe(20);
     }
 }

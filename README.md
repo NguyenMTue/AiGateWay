@@ -98,27 +98,33 @@ flowchart TD
 
 1. **Bộ định tuyến Thông minh & Automatic In-Request Failover (IntelligentRouter)**:
    * **In-Request Auto Failover**: Khi mô hình chính (`PrimaryModel`) bị lỗi (401, 429, 500, 503, Timeout), bộ định tuyến tự động thử ngay mô hình dự phòng (`FallbackModel`) trong cùng 1 cuộc gọi HTTP trước khi trả kết quả cho Client.
+   * **Polly Circuit Breaker (Ngắt mạch tự động)**: Tự động chuyển mạch sang trạng thái `OPEN` trong 60 giây khi phát hiện 3 lỗi 5xx/429 liên tiếp từ Provider. Bộ định tuyến tự động bỏ qua Provider đang hỏng mà không mất thời gian chờ network call, chuyển thẳng 100% traffic sang `FallbackModel`.
    * **Chiến lược `LowestLatency`**: Định tuyến tới mô hình có thời gian phản hồi trung bình nhanh nhất.
    * **Chiến lược `LowestCost`**: Định tuyến tới mô hình có chi phí $/1k tokens thấp nhất.
 
-2. **Phân tán Rate Limiting với Redis Distributed Cache**:
+2. **Streaming Phản hồi Thời gian Thực (Server-Sent Events - SSE)**:
+   * Hỗ trợ cờ `"stream": true` chuẩn giao thức OpenAI API (`text/event-stream`).
+   * Phù hợp cho Game Client (Unity 2D/3D, Unreal Engine) hiển thị hiệu ứng chữ chạy từng từ (typewriter effect) mượt mà cho thoại NPC.
+
+3. **Phân tán Rate Limiting với Redis Distributed Cache**:
    * Áp dụng `IDistributedCache` (Redis) cho phép quản lý RPM/TPM đồng bộ giữa nhiều cụm Server Gateway.
    * **Fault-Tolerant Memory Fallback**: Khi kết nối Redis có sự cố, hệ thống tự động ghi nhận warning log và chuyển sang dùng `IMemoryCache` cục bộ, đảm bảo hệ thống luôn hoạt động 24/7.
 
-3. **Quản lý Virtual Keys & Mã hóa Nâng cao**:
+4. **Quản lý Virtual Keys & Phân quyền Model (Model Whitelisting)**:
+   * **Model Access Control**: Phân quyền danh sách mô hình được phép truy cập (`AllowedModelAliases`) cho từng Virtual Key. Trả về `403 Forbidden` khi truy cập mô hình ngoài danh sách.
    * **AES-256 Encryption**: Mã hóa API Keys của các Provider khi lưu trong PostgreSQL.
    * **SHA-256 Hashing**: Hash chìa khóa ảo Virtual Key trước khi xác thực.
    * Giới hạn ngân sách `MaxBudgetUsd`, hạn ngạch `LimitRpm`, `LimitTpm` và thời gian hết hạn (`ExpiresAt`).
 
-4. **Xác thực JWT & Phân quyền Role-Based Access Control (`POST /auth`)**:
+5. **Xác thực JWT & Phân quyền Role-Based Access Control (`POST /auth`)**:
    * Cấp phát JWT Bearer Token cho Game Client / thiết bị.
    * Phân quyền Role-Based (`Administrator`, `User`, `NpcClient`).
 
-5. **AI Proxy & Định dạng Đầu ra có Cấu trúc (`POST /v1/chat/completions`)**:
+6. **AI Proxy & Định dạng Đầu ra có Cấu trúc (`POST /v1/chat/completions`)**:
    * Chuẩn hóa giao thức gọi LLM theo OpenAI API Specification.
    * Đảm bảo đầu ra trả về định dạng JSON có cấu trúc an toàn cho Game Engines (Unity JsonUtility/Newtonsoft).
 
-6. **Giám sát & Báo cáo Analytics (`/api/analytics`)**:
+7. **Giám sát & Báo cáo Analytics (`/api/analytics`)**:
    * **Chi phí & Token (`/cost-usage`)**: Thống kê Prompt/Completion Tokens và chi phí USD theo thời gian.
    * **Chìa khóa Ảo (`/virtual-keys`)**: Thống kê mức độ tiêu dùng của từng Virtual Key.
    * **Sức khỏe Provider (`/provider-health`)**: Giám sát độ trễ (Latency ms), tỷ lệ lỗi 429/5xx của từng mô hình AI.
@@ -175,13 +181,14 @@ Hệ thống đi kèm bộ kiểm thử tự động bao gồm Unit Tests và In
 dotnet test
 ```
 
-* **Unit Tests (26 tests)**:
-  * `IntelligentRouterTests`: Kiểm tra chiến lược định tuyến `LowestCost`, `LowestLatency`, ưu tiên Key, và cơ chế tự động Failover sang mô hình dự phòng khi gặp lỗi HTTP 401/429/500.
-  * `VirtualKeyServiceTests`: Kiểm tra mã hóa SHA-256 hash, cấp phát Key, kiểm tra ngân sách `MaxBudgetUsd` và thời hạn `ExpiresAt`.
+* **Unit Tests (35 tests)**:
+  * `IntelligentRouterTests`: Kiểm tra chiến lược định tuyến `LowestCost`, `LowestLatency`, ưu tiên Key, tự động Failover, và cơ chế ngắt mạch Circuit Breaker bypass key bị hỏng.
+  * `CircuitBreakerServiceTests`: Kiểm tra ngưỡng ngắt mạch 3 lỗi 5xx/429, đếm ngược thời gian ngắt 60s, và tự động khôi phục về trạng thái Closed khi thành công.
+  * `VirtualKeyServiceTests`: Kiểm tra mã hóa SHA-256 hash, cấp phát Key, phân quyền mô hình `IsModelAllowed`, kiểm tra ngân sách `MaxBudgetUsd` và thời hạn `ExpiresAt`.
   * `RateLimitServiceTests`: Kiểm tra tính năng Rate Limiting với Redis Distributed Cache, kiểm tra giới hạn RPM/TPM và cơ chế tự động fallback về `IMemoryCache`.
 * **Integration Tests (4 tests)**:
   * Kiểm thử các API Endpoints thực tế (`/v1/chat/completions`, `/auth`, `/api/analytics`, `/api/route-rules`).
-* **Kết quả**: **30/30 tests thành công 100%**.
+* **Kết quả**: **39/39 tests thành công 100%**.
 
 ---
 
