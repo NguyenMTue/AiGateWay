@@ -188,4 +188,56 @@ public class IntelligentRouterTests
         key.CooldownUntil.Value.ShouldBeGreaterThan(DateTimeOffset.UtcNow);
         _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Test]
+    public async Task ResolveTargetAsync_WithLowestCostStrategy_ShouldPickCheapestModel()
+    {
+        // Arrange: Primary model is expensive, Fallback model is cheaper
+        var expensiveKey = new ProviderApiKey { Id = 1, EncryptedApiKey = "exp1", IsActive = true };
+        var expensiveModel = new AiModel
+        {
+            Id = 10,
+            Name = "GPT-4o",
+            PromptTokenCostPer1K = 0.0025m,
+            CompletionTokenCostPer1K = 0.0100m,
+            IsActive = true,
+            Provider = new AiProvider { Id = 100, Name = "OpenAI", IsActive = true, ApiKeys = new List<ProviderApiKey> { expensiveKey } }
+        };
+
+        var cheapKey = new ProviderApiKey { Id = 2, EncryptedApiKey = "cheap1", IsActive = true };
+        var cheapModel = new AiModel
+        {
+            Id = 20,
+            Name = "Gemini 1.5 Flash",
+            PromptTokenCostPer1K = 0.000075m,
+            CompletionTokenCostPer1K = 0.000300m,
+            IsActive = true,
+            Provider = new AiProvider { Id = 200, Name = "Google Gemini", IsActive = true, ApiKeys = new List<ProviderApiKey> { cheapKey } }
+        };
+
+        var routeRule = new RouteRule
+        {
+            Id = 2,
+            Name = "Cost Rule",
+            TargetModelAlias = "budget-model",
+            RoutingStrategy = RoutingStrategy.LowestCost,
+            PrimaryModel = expensiveModel,
+            FallbackModel = cheapModel,
+            IsActive = true
+        };
+
+        var routeRules = new List<RouteRule> { routeRule }.ToMockDbSet();
+        var aiModels = new List<AiModel> { expensiveModel, cheapModel }.ToMockDbSet();
+
+        _mockContext.Setup(c => c.RouteRules).Returns(routeRules.Object);
+        _mockContext.Setup(c => c.AiModels).Returns(aiModels.Object);
+
+        // Act: Should select the cheaper model (Gemini 1.5 Flash) first, even though GPT-4o is primary!
+        var target = await _router.ResolveTargetAsync("budget-model", CancellationToken.None);
+
+        // Assert
+        target.ShouldNotBeNull();
+        target.Model.Name.ShouldBe("Gemini 1.5 Flash");
+        target.ApiKey.Id.ShouldBe(2);
+    }
 }

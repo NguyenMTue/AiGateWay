@@ -26,6 +26,10 @@ public class IntelligentRouter : IIntelligentRouter
             ? new HashSet<int>(excludeApiKeyIds) 
             : new HashSet<int>();
 
+        List<AiModel> candidateModels = new();
+        RoutingStrategy strategy = RoutingStrategy.Priority;
+        RouteRule? matchedRule = null;
+
         // 1. Check for explicit RouteRule matching alias
         var rule = await _context.RouteRules
             .Include(r => r.PrimaryModel)
@@ -40,35 +44,61 @@ public class IntelligentRouter : IIntelligentRouter
 
         if (rule != null)
         {
-            var primaryTarget = PickKeyAndBuildTarget(rule.PrimaryModel, rule.RoutingStrategy, rule, excludedSet);
-            if (primaryTarget != null)
-            {
-                return primaryTarget;
-            }
+            matchedRule = rule;
+            strategy = rule.RoutingStrategy;
 
-            // If primary target has no active keys, try fallback model
+            if (rule.PrimaryModel != null)
+                candidateModels.Add(rule.PrimaryModel);
+
             if (rule.FallbackModel != null)
-            {
-                var fallbackTarget = PickKeyAndBuildTarget(rule.FallbackModel, rule.RoutingStrategy, rule, excludedSet);
-                if (fallbackTarget != null)
-                {
-                    return fallbackTarget;
-                }
-            }
+                candidateModels.Add(rule.FallbackModel);
+        }
+        else
+        {
+            // 2. Fallback: Search AiModels directly by Alias or ModelId
+            var directModels = await _context.AiModels
+                .Include(m => m.Provider)
+                    .ThenInclude(p => p.ApiKeys)
+                .Where(m => m.IsActive && m.Provider.IsActive &&
+                           (m.Alias.ToLower() == requestedModelAlias.ToLower() ||
+                            m.ModelId.ToLower() == requestedModelAlias.ToLower()))
+                .ToListAsync(cancellationToken);
+
+            candidateModels.AddRange(directModels);
         }
 
-        // 2. Fallback: Search AiModels directly by Alias or ModelId
-        var directModels = await _context.AiModels
-            .Include(m => m.Provider)
-                .ThenInclude(p => p.ApiKeys)
-            .Where(m => m.IsActive && m.Provider.IsActive &&
-                       (m.Alias.ToLower() == requestedModelAlias.ToLower() ||
-                        m.ModelId.ToLower() == requestedModelAlias.ToLower()))
-            .ToListAsync(cancellationToken);
-
-        foreach (var model in directModels)
+        if (candidateModels.Count == 0)
         {
-            var target = PickKeyAndBuildTarget(model, RoutingStrategy.Priority, null, excludedSet);
+            throw new InvalidOperationException($"No active provider or API key available for requested model alias '{requestedModelAlias}'.");
+        }
+
+        // Apply advanced routing strategy sorting
+        if (strategy == RoutingStrategy.LowestCost)
+        {
+            candidateModels = candidateModels
+                .OrderBy(m => (m.PromptTokenCostPer1K + m.CompletionTokenCostPer1K))
+                .ToList();
+        }
+        else if (strategy == RoutingStrategy.LowestLatency)
+        {
+            var modelIds = candidateModels.Select(m => m.Id).ToList();
+            var windowStart = DateTimeOffset.UtcNow.AddHours(-24);
+
+            var avgLatencies = await _context.RequestLogs
+                .AsNoTracking()
+                .Where(r => r.IsSuccess && r.RequestedAt >= windowStart && r.AiModelId.HasValue && modelIds.Contains(r.AiModelId.Value))
+                .GroupBy(r => r.AiModelId!.Value)
+                .Select(g => new { ModelId = g.Key, AvgLatency = g.Average(x => (double)x.LatencyMs) })
+                .ToDictionaryAsync(x => x.ModelId, x => x.AvgLatency, cancellationToken);
+
+            candidateModels = candidateModels
+                .OrderBy(m => avgLatencies.TryGetValue(m.Id, out var lat) ? lat : 0.0)
+                .ToList();
+        }
+
+        foreach (var model in candidateModels)
+        {
+            var target = PickKeyAndBuildTarget(model, strategy, matchedRule, excludedSet);
             if (target != null)
             {
                 return target;
