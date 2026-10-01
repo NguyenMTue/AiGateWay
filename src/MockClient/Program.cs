@@ -133,15 +133,8 @@ public class Program
     {
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, "/v1/chat/completions");
 
-        // Attach Authorization (Bearer Token or Virtual Key)
-        if (!string.IsNullOrEmpty(_accessToken))
-        {
-            requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
-        }
-        else
-        {
-            requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", DevVirtualKey);
-        }
+        // Attach Virtual Key Authorization for Gateway AI Proxy endpoints
+        requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", DevVirtualKey);
 
         var payload = new
         {
