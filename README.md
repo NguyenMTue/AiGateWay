@@ -50,9 +50,6 @@ Tuy nhiên, việc kết nối trực tiếp từ Game Client (Unity/Unreal Engi
 
 ## 🏗️ 2. Sơ đồ Kiến trúc Hệ thống (Architecture Diagram)
 
-![AI Gateway Architecture Diagram](architecture_diagram.png)
-
-<details>
 <summary>📐 Xem Sơ đồ Mermaid (Detailed Mermaid Diagram Code)</summary>
 
 ```mermaid
@@ -109,7 +106,6 @@ flowchart TD
     WebhookNotifier --> Discord
     WebhookNotifier --> Slack
 ```
-</details>
 
 ---
 
