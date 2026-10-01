@@ -294,19 +294,20 @@ public class ApplicationDbContextInitialiser
         }
 
         // 5. Seed Dev Virtual Key for Testing
-        if (!await _context.VirtualKeys.AnyAsync())
-        {
-            var devRawKey = "gw-live-devtestkey1234567890abcdef";
-            var keyHash = VirtualKeyService.HashKey(devRawKey);
+        var devRawKey = "gw-live-devtestkey1234567890abcdef";
+        var keyHash = VirtualKeyService.HashKey(devRawKey);
+        var existingDevKey = await _context.VirtualKeys.FirstOrDefaultAsync(k => k.KeyHash == keyHash);
 
+        if (existingDevKey == null)
+        {
             _context.VirtualKeys.Add(new VirtualKey
             {
                 Name = "Development Local Test Key",
                 KeyHash = keyHash,
                 KeyPrefix = "gw-live-",
                 KeyMask = "gw-live-...cdef",
-                RateLimitRpm = 600,
-                RateLimitTpm = 1000000,
+                RateLimitRpm = 20,
+                RateLimitTpm = 20000,
                 MaxBudgetUsd = 0.05m,
                 CurrentUsageUsd = 0.00m,
                 IsActive = true
@@ -319,6 +320,13 @@ public class ApplicationDbContextInitialiser
             _logger.LogInformation("  Raw Virtual Key: {RawKey}", devRawKey);
             _logger.LogInformation("  Header Usage:    Authorization: Bearer {RawKey}", devRawKey);
             _logger.LogInformation("=========================================================================");
+        }
+        else
+        {
+            existingDevKey.RateLimitRpm = 20;
+            existingDevKey.RateLimitTpm = 20000;
+            existingDevKey.MaxBudgetUsd = 0.05m;
+            await _context.SaveChangesAsync();
         }
 
         // 6. Seed Initial Chat History Context for NPC / Testing
