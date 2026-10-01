@@ -271,7 +271,7 @@ public class Program
                     {
                         for (int i = 1; i <= 5; i++)
                         {
-                            await SendAiAnalyzeRequestAsync(_httpClient, 10, 10, 1, maxTokens: 5000);
+                            await SendAiAnalyzeRequestAsync(_httpClient, 10, 10, 1, maxTokens: 500);
                             await Task.Delay(200);
                         }
                     }

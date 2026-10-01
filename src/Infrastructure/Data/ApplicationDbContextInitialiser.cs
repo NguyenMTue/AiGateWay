@@ -305,9 +305,9 @@ public class ApplicationDbContextInitialiser
                 KeyHash = keyHash,
                 KeyPrefix = "gw-live-",
                 KeyMask = "gw-live-...cdef",
-                RateLimitRpm = 60,
-                RateLimitTpm = 100000,
-                MaxBudgetUsd = 100.00m,
+                RateLimitRpm = 600,
+                RateLimitTpm = 1000000,
+                MaxBudgetUsd = 0.05m,
                 CurrentUsageUsd = 0.00m,
                 IsActive = true
             });

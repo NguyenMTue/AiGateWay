@@ -27,6 +27,39 @@ public class AnthropicProviderAdapter : IAiProviderAdapter
         ChatCompletionRequest request,
         CancellationToken cancellationToken)
     {
+        if (apiKey.Contains("dummy", StringComparison.OrdinalIgnoreCase) || apiKey.StartsWith("sk-mock", StringComparison.OrdinalIgnoreCase) || apiKey.StartsWith("dev-mock", StringComparison.OrdinalIgnoreCase))
+        {
+            var promptTokens = request.Messages?.Sum(m => m.Content?.ToString()?.Length ?? 0) / 4 ?? 120;
+            promptTokens = Math.Max(50, promptTokens);
+            var completionTokens = 45;
+
+            return new ChatCompletionResponse
+            {
+                Id = $"chatcmpl-anthropic-mock-{Guid.NewGuid():N}",
+                Object = "chat.completion",
+                Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                Model = request.Model,
+                Choices = new List<ChatChoiceDto>
+                {
+                    new()
+                    {
+                        Index = 0,
+                        Message = new ChatMessageDto
+                        {
+                            Role = "assistant",
+                            Content = "{\"action\": \"patrol\", \"dialogue\": \"Guard patrolling castle courtyard. All clear.\"}"
+                        },
+                        FinishReason = "stop"
+                    }
+                },
+                Usage = new UsageDto
+                {
+                    PromptTokens = promptTokens,
+                    CompletionTokens = completionTokens,
+                    TotalTokens = promptTokens + completionTokens
+                }
+            };
+        }
         var anthropicReq = MapToAnthropicRequest(model.ModelId, request);
 
         var baseUrl = provider.BaseUrl.TrimEnd('/');
@@ -63,6 +96,13 @@ public class AnthropicProviderAdapter : IAiProviderAdapter
         ChatCompletionRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        if (apiKey.Contains("dummy", StringComparison.OrdinalIgnoreCase) || apiKey.StartsWith("sk-mock", StringComparison.OrdinalIgnoreCase) || apiKey.StartsWith("dev-mock", StringComparison.OrdinalIgnoreCase))
+        {
+            yield return "data: {\"id\":\"chatcmpl-anthropic-mock-stream\",\"object\":\"chat.completion.chunk\",\"created\":1700000000,\"model\":\"" + request.Model + "\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"Guard patrolling castle courtyard. All clear.\"},\"finish_reason\":null}]}\n\n";
+            yield return "data: {\"id\":\"chatcmpl-anthropic-mock-stream\",\"object\":\"chat.completion.chunk\",\"created\":1700000000,\"model\":\"" + request.Model + "\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n";
+            yield return "data: [DONE]\n\n";
+            yield break;
+        }
         var anthropicReq = MapToAnthropicRequest(model.ModelId, request);
         anthropicReq.Stream = true;
 
