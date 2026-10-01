@@ -50,8 +50,6 @@ Tuy nhiên, việc kết nối trực tiếp từ Game Client (Unity/Unreal Engi
 
 ## 🏗️ 2. Sơ đồ Kiến trúc Hệ thống (Architecture Diagram)
 
-<summary>📐 Xem Sơ đồ Mermaid (Detailed Mermaid Diagram Code)</summary>
-
 ```mermaid
 flowchart TD
     subgraph Clients["Clients & Game Engines"]
