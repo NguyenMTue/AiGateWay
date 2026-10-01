@@ -22,5 +22,10 @@ var web = builder.AddProject<Projects.Web>(Services.WebApi)
         url.Url = "/swagger";
     });
 
+var webUi = builder.AddProject<Projects.WebUI>("web-ui")
+    .WithReference(databaseServer)
+    .WaitFor(databaseServer)
+    .WithExternalHttpEndpoints()
+    .WithAspNetCoreEnvironment();
 
 builder.Build().Run();
