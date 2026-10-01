@@ -67,6 +67,21 @@ public class UsageMeteringBackgroundService : BackgroundService
                         {
                             key.CurrentUsageUsd += item.CalculatedCostUsd;
                             key.LastUsedAt = item.RequestedAt;
+
+                            // Check Webhook Budget Alert (>= 90% MaxBudgetUsd)
+                            if (key.MaxBudgetUsd.HasValue && key.MaxBudgetUsd.Value > 0)
+                            {
+                                var threshold = key.MaxBudgetUsd.Value * 0.90m;
+                                if (key.CurrentUsageUsd >= threshold)
+                                {
+                                    var webhookService = scope.ServiceProvider.GetService<IWebhookNotificationService>();
+                                    if (webhookService != null)
+                                    {
+                                        await webhookService.SendVirtualKeyBudgetAlertAsync(
+                                            key.Id, key.Name, key.KeyMask, key.CurrentUsageUsd, key.MaxBudgetUsd.Value, stoppingToken);
+                                    }
+                                }
+                            }
                         }
                     }
 

@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using AiGateway.Application.Common.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace AiGateway.Infrastructure.Services;
@@ -7,14 +8,18 @@ namespace AiGateway.Infrastructure.Services;
 public class CircuitBreakerService : ICircuitBreakerService
 {
     private readonly ILogger<CircuitBreakerService> _logger;
+    private readonly IServiceProvider? _serviceProvider;
     private readonly ConcurrentDictionary<int, CircuitStateData> _circuits = new();
 
     private const int DefaultFailureThreshold = 3;
     private static readonly TimeSpan DefaultBreakDuration = TimeSpan.FromSeconds(60);
 
-    public CircuitBreakerService(ILogger<CircuitBreakerService> logger)
+    public CircuitBreakerService(
+        ILogger<CircuitBreakerService> logger,
+        IServiceProvider? serviceProvider = null)
     {
         _logger = logger;
+        _serviceProvider = serviceProvider;
     }
 
     public bool IsCircuitOpen(int providerApiKeyId)
@@ -85,6 +90,28 @@ public class CircuitBreakerService : ICircuitBreakerService
                 state.OpenUntil = DateTimeOffset.UtcNow.Add(DefaultBreakDuration);
                 _logger.LogError("Circuit Breaker for ProviderApiKey {ApiKeyId} TRIPPED to OPEN until {OpenUntil} due to {Failures} consecutive failures.",
                     providerApiKeyId, state.OpenUntil, state.ConsecutiveFailures);
+
+                if (_serviceProvider != null)
+                {
+                    var failures = state.ConsecutiveFailures;
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            using var scope = _serviceProvider.CreateScope();
+                            var webhookService = scope.ServiceProvider.GetService<IWebhookNotificationService>();
+                            if (webhookService != null)
+                            {
+                                await webhookService.SendCircuitBreakerAlertAsync(
+                                    providerApiKeyId, $"ApiKey #{providerApiKeyId}", failures, DefaultBreakDuration);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed to dispatch Circuit Breaker Webhook alert for ApiKey {ApiKeyId}", providerApiKeyId);
+                        }
+                    });
+                }
             }
         }
     }

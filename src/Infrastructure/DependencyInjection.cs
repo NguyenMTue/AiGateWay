@@ -1,9 +1,11 @@
 using AiGateway.Application.Common.Interfaces;
+using AiGateway.Application.Common.Models.Webhooks;
 using AiGateway.Infrastructure.AiProviders;
 using AiGateway.Infrastructure.Data;
 using AiGateway.Infrastructure.Data.Interceptors;
 using AiGateway.Infrastructure.Identity;
 using AiGateway.Infrastructure.Metering;
+using AiGateway.Infrastructure.Monitoring;
 using AiGateway.Infrastructure.Routing;
 using AiGateway.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
@@ -94,5 +96,10 @@ public static class DependencyInjection
 
         // Intelligent Router
         builder.Services.AddScoped<IIntelligentRouter, IntelligentRouter>();
+
+        // Webhook Notifications & Health Monitoring
+        builder.Services.Configure<WebhookSettings>(builder.Configuration.GetSection(WebhookSettings.SectionName));
+        builder.Services.AddSingleton<IWebhookNotificationService, WebhookNotificationService>();
+        builder.Services.AddHostedService<ProviderHealthMonitoringBackgroundService>();
     }
 }
