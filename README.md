@@ -2,7 +2,7 @@
 
 Dự án **AI Gateway** là giải pháp cổng kết nối API mã nguồn mở được xây dựng trên nền tảng **.NET 10 ASP.NET Core Minimal APIs**, áp dụng kiến trúc **Clean Architecture** kết hợp với **CQRS (MediatR)**.
 
-Hệ thống đóng vai trò làm trung gian bảo mật, định tuyến thông minh (Intelligent Routing), quản lý hạn ngạch (Distributed Rate Limiting & Virtual Keys), giám sát độ trễ (Latency Monitoring), tự động chuyển đổi dự phòng (Zero-Downtime Failover), ngắt mạch tự động (Polly Circuit Breaker), bộ nhớ đệm ngữ nghĩa (Semantic Response Caching), và thống kê chi phí ($ USD) cho các ứng dụng client (Game Unity 2D/3D, Unreal Engine, ứng dụng di động, thiết bị IoT).
+Hệ thống đóng vai trò làm trung gian bảo mật, định tuyến thông minh (Intelligent Routing), quản lý hạn ngạch (Distributed Rate Limiting & Virtual Keys), giám sát độ trễ (Latency Monitoring), tự động chuyển đổi dự phòng (Zero-Downtime Failover), ngắt mạch tự động (Polly Circuit Breaker), bộ nhớ đệm ngữ nghĩa (Semantic Response Caching), **cảnh báo thời gian thực qua Webhook (Slack/Discord)**, **giao diện quản trị Blazor Dashboard**, và thống kê chi phí ($ USD) cho các ứng dụng client (Game Unity 2D/3D, Unreal Engine, ứng dụng di động, thiết bị IoT).
 
 ---
 
@@ -40,9 +40,11 @@ Tuy nhiên, việc kết nối trực tiếp từ Game Client (Unity/Unreal Engi
 * **🔒 Phân quyền Mô hình (Model Whitelisting per Key)**:
   * Cho phép gán danh sách các mô hình được phép truy cập (`AllowedModelAliases`) cho từng Virtual Key (ví dụ: Key NPC thường chỉ được gọi `gpt-4o-mini`, Key NPC Boss được phép gọi `gpt-4o`). Trả về `403 Forbidden` khi truy cập trái phép.
 
-* **📊 Quản trị & Giám sát Thời gian Thực (Real-time Game Telemetry & Analytics)**:
-  * Báo cáo chính xác số lượng Prompt/Completion Tokens và chi phí ($ USD) tiêu tốn theo từng ngày/tháng, từng Server Game hoặc từng Virtual Key.
-  * Giám sát độ khỏe (Provider Health), độ trễ (Latency ms) và tỷ lệ lỗi của từng nhà cung cấp AI.
+* **🔔 Cảnh báo Thời gian Thực qua Webhook (Slack / Discord Channels)**:
+  * Tự động gửi thông báo Webhook định dạng Rich Embeds tới Slack/Discord khi **Virtual Key đạt 90% ngân sách (`MaxBudgetUsd`)**, khi **Provider có tỷ lệ lỗi vượt quá 10%**, hoặc khi **Circuit Breaker bị ngắt mạch (`OPEN`)**.
+
+* **📊 Quản trị & Giám sát Thời gian Thực (Blazor Dashboard & Telemetry Analytics)**:
+  * Giao diện **Blazor WebApp Interactive Dashboard (`/webui`)** hiển thị biểu đồ, tiến trình sử dụng ngân sách Virtual Key và bảng theo dõi độ khỏe AI Provider.
 
 ---
 
@@ -54,7 +56,7 @@ flowchart TD
         UnityGame["Unity 2D / 3D Engine"]
         UnrealApp["Unreal Engine / Mobile App"]
         MockClient["Mock Client Simulator"]
-        WebApp["Management Dashboard"]
+        BlazorUI["Blazor Management Dashboard"]
     end
 
     subgraph Gateway["AI Gateway (.NET 10 Minimal APIs)"]
@@ -64,12 +66,15 @@ flowchart TD
         Router["Intelligent Router & Circuit Breaker"]
         Metering["Async Metering Channel"]
         AnalyticsModule["Analytics Module (/api/analytics)"]
+        WebhookNotifier["Webhook Alert Service"]
         RateLimiter["Distributed Rate Limiter"]
     end
 
-    subgraph Infrastructure["Database & Providers"]
+    subgraph Operations["External Channels & Infrastructure"]
         DB[(PostgreSQL Database)]
         RedisCache[(Redis Cache)]
+        Discord["Discord Channel Webhook"]
+        Slack["Slack Channel Webhook"]
         OpenAI["OpenAI API"]
         Gemini["Google Gemini API"]
         Anthropic["Anthropic Claude API"]
@@ -79,7 +84,7 @@ flowchart TD
     UnityGame -->|POST /v1/chat/completions| ProxyModule
     UnrealApp -->|POST /v1/chat/completions| ProxyModule
     MockClient -->|Telemetry & Stress Test| ProxyModule
-    WebApp -->|GET /api/analytics| AnalyticsModule
+    BlazorUI -->|GET /api/analytics| AnalyticsModule
 
     ProxyModule --> RateLimiter
     RateLimiter -->|RPM / TPM Check| RedisCache
@@ -94,57 +99,48 @@ flowchart TD
 
     ProxyModule --> Metering
     Metering -->|Async Batch Insert| DB
-    AuthModule --> DB
-    AnalyticsModule --> DB
+    Metering -.->|Budget >= 90% Alert| WebhookNotifier
+    Router -.->|Circuit Breaker Open Alert| WebhookNotifier
+    WebhookNotifier --> Discord
+    WebhookNotifier --> Slack
 ```
 
 ---
 
 ## ✨ 3. Tính năng Cốt lõi & Cập nhật Mới nhất (Core Features & Recent Updates)
 
-1. **Semantic Response Caching (Bộ nhớ đệm Ngữ nghĩa)**:
-   * **Prompt Normalization**: Tự động chuẩn hóa câu thoại (chữ thường, xóa dấu câu, gom khoảng trắng) để tạo SHA-256 Semantic Key `semcache:{model}:{hash}`.
-   * **Cache Hit Optimization**: Trả về phản hồi lập tức với **độ trễ < 2ms, 0 prompt tokens, 0 completion tokens và $0 chi phí USD**.
-   * **Redis & Memory Fallback**: Lưu cache trên Redis `IDistributedCache` (TTL 24 giờ) với cơ chế fallback tự động sang `IMemoryCache`.
+1. **Cảnh báo Thời gian Thực qua Webhook (Slack / Discord Notifications)**:
+   * **Virtual Key 90% Budget Alert**: Tự động bắn thông báo màu cam khi `CurrentUsageUsd` chạm ngưỡng 90% `MaxBudgetUsd`.
+   * **Provider Error Rate > 10% Alert**: Chạy ngầm `ProviderHealthMonitoringBackgroundService` quét nhật ký request và bắn cảnh báo khi tỷ lệ lỗi vượt 10%.
+   * **Circuit Breaker Trip Alert**: Bắn thông báo khẩn cấp màu đỏ ngay khi Circuit Breaker của Provider bị ngắt mạch (trạng thái `OPEN`).
+   * **Anti-Spam Throttling**: Tích hợp cơ chế giãn cách thông báo (cooldown 15 phút) chống ngập channel.
 
-2. **Polly Circuit Breaker (Ngắt mạch Tự động)**:
+2. **Giao diện Quản trị Blazor Dashboard (`src/WebUI`)**:
+   - Xây dựng bằng **Blazor WebApp Interactive Server (.NET 10)**.
+   - Hiển thị trực quan: Tổng số Request, Tổng Chi phí ($ USD), Tổng Token, Thanh tiến trình sử dụng ngân sách Virtual Key và Báo cáo độ khỏe Provider.
+   - Tích hợp công cụ **Send Live Test Webhook Alert**.
+
+3. **Polly Circuit Breaker (Ngắt mạch Tự động)**:
    * **Auto Trip**: Tự động ngắt mạch (chuyển sang `OPEN` trong 60 giây) khi 1 Provider gặp 3 lỗi 5xx hoặc 429 liên tiếp.
-   * **Zero Overhead**: Khi mạch ngắt, bộ định tuyến bỏ qua Provider bị sập trong 0ms để gọi trực tiếp `FallbackModel`.
-   * **Half-Open Recovery**: Sau 60 giây, tự động cho phép 1 request thử nghiệm để khôi phục về trạng thái `Closed`.
+   * **Zero Overhead**: Bỏ qua Provider bị sập trong 0ms để gọi trực tiếp `FallbackModel`.
 
-3. **Bộ định tuyến Thông minh & Automatic In-Request Failover (IntelligentRouter)**:
+4. **Bộ định tuyến Thông minh & Automatic In-Request Failover (IntelligentRouter)**:
    * **In-Request Auto Failover**: Tự động gọi mô hình dự phòng (`FallbackModel`) trong cùng 1 cuộc gọi HTTP khi mô hình chính gặp lỗi.
-   * **Chiến lược `LowestLatency`**: Định tuyến tới mô hình có thời gian phản hồi trung bình nhanh nhất.
-   * **Chiến lược `LowestCost`**: Định tuyến tới mô hình có chi phí $/1k tokens thấp nhất.
+   * **Chiến lược `LowestLatency` & `LowestCost`**: Tự động định tuyến tối ưu độ trễ hoặc chi phí.
 
-4. **Streaming Phản hồi Thời gian Thực (Server-Sent Events - SSE)**:
+5. **Streaming Phản hồi Thời gian Thực (Server-Sent Events - SSE)**:
    * Hỗ trợ cờ `"stream": true` chuẩn giao thức OpenAI API (`text/event-stream`).
-   * Phù hợp cho Game Client (Unity 2D/3D, Unreal Engine) hiển thị hiệu ứng chữ chạy từng từ (typewriter effect) mượt mà cho thoại NPC.
 
-5. **Phân tán Rate Limiting với Redis Distributed Cache**:
-   * Áp dụng `IDistributedCache` (Redis) cho phép quản lý RPM/TPM đồng bộ giữa nhiều cụm Server Gateway.
-   * **Fault-Tolerant Memory Fallback**: Khi kết nối Redis có sự cố, hệ thống tự động ghi nhận warning log và chuyển sang dùng `IMemoryCache` cục bộ, đảm bảo hệ thống luôn hoạt động 24/7.
+6. **Phân tán Rate Limiting với Redis & Memory Fallback**:
+   * Áp dụng `IDistributedCache` (Redis) quản lý RPM/TPM đồng bộ giữa nhiều Gateway node, tự động fallback sang `IMemoryCache` khi Redis offline.
 
-6. **Quản lý Virtual Keys & Phân quyền Model (Model Whitelisting)**:
-   * **Model Access Control**: Phân quyền danh sách mô hình được phép truy cập (`AllowedModelAliases`) cho từng Virtual Key. Trả về `403 Forbidden` khi truy cập mô hình ngoài danh sách.
+7. **Quản lý Virtual Keys & Phân quyền Model (Model Whitelisting)**:
+   * **Model Access Control**: Phân quyền danh sách mô hình được phép truy cập (`AllowedModelAliases`). Trả về `403 Forbidden` khi truy cập trái phép.
    * **AES-256 Encryption**: Mã hóa API Keys của các Provider khi lưu trong PostgreSQL.
-   * **SHA-256 Hashing**: Hash chìa khóa ảo Virtual Key trước khi xác thực.
-   * Giới hạn ngân sách `MaxBudgetUsd`, hạn ngạch `LimitRpm`, `LimitTpm` và thời gian hết hạn (`ExpiresAt`).
-
-7. **Xác thực JWT & Phân quyền Role-Based Access Control (`POST /auth`)**:
-   * Cấp phát JWT Bearer Token cho Game Client / thiết bị.
-   * Phân quyền Role-Based (`Administrator`, `User`, `NpcClient`).
-
-8. **Giám sát & Báo cáo Analytics (`/api/analytics`)**:
-   * **Chi phí & Token (`/cost-usage`)**: Thống kê Prompt/Completion Tokens và chi phí USD theo thời gian.
-   * **Chìa khóa Ảo (`/virtual-keys`)**: Thống kê mức độ tiêu dùng của từng Virtual Key.
-   * **Sức khỏe Provider (`/provider-health`)**: Giám sát độ trễ (Latency ms), tỷ lệ lỗi 429/5xx của từng mô hình AI.
 
 ---
 
 ## 🔑 4. Tài khoản & Khóa thử nghiệm (Seed Test Data)
-
-Sau khi khởi chạy, hệ thống tự động khởi tạo các dữ liệu thử nghiệm sau:
 
 | Loại tài khoản / Resource | Email / Identifier | Password / Secret Key | Vai trò (Role) |
 | :--- | :--- | :--- | :--- |
@@ -168,19 +164,20 @@ Sau khi khởi chạy, hệ thống tự động khởi tạo các dữ liệu t
    docker-compose up -d
    ```
 
-2. **Khởi chạy Hệ thống Backend AI Gateway (qua .NET Aspire)**:
+2. **Khởi chạy Backend AI Gateway & Blazor Dashboard (qua .NET Aspire)**:
    ```bash
    dotnet run --project .\src\AppHost
    ```
-   * Hệ thống tự động tạo Database, áp dụng Migrations và Seed dữ liệu tài khoản thử nghiệm.
-   * Giao diện Aspire Dashboard & OpenAPI Swagger sẽ tự động hiển thị tại trình duyệt.
+   * Aspire Dashboard, Swagger UI (`/swagger`) và Blazor Dashboard UI (`/webui`) sẽ tự động khởi chạy.
 
-3. **Khởi chạy Ứng dụng Giả lập Mock Client (Kiểm thử Live & Stress Test)**:
+3. **Khởi chạy Ứng dụng Giả lập Mock Client (Kiểm thử Live & Stress Test & Webhook)**:
    Mở một cửa sổ Terminal mới và chạy:
    ```bash
    dotnet run --project .\src\MockClient
    ```
-   * **Nhấn phím `S`**: Bật/tắt chế độ **Stress Test (100ms Interval)** để kích hoạt lỗi `429 Too Many Requests` chứng minh tính năng bảo vệ hạn ngạch.
+   * **Nhấn phím `S`**: Bật/tắt chế độ **Stress Test (100ms Interval)** kích hoạt lỗi `429 Rate Limit`.
+   * **Nhấn phím `W`**: Bắn **Test Webhook Alert** trực tiếp tới Slack/Discord Channel.
+   * **Nhấn phím `B`**: Giả lập đợt bùng nổ token (`Budget Burst`) kích hoạt **Cảnh báo 90% Ngân sách**.
 
 ---
 
@@ -192,12 +189,12 @@ Hệ thống đi kèm bộ kiểm thử tự động bao gồm Unit Tests và In
 dotnet test
 ```
 
-* **Unit Tests (37 tests)**:
-  * `SemanticCacheServiceTests`: Kiểm tra chuẩn hóa câu thoại prompt, tạo SHA-256 semantic key trùng khớp, cache miss và set/get hit từ Redis / Memory Cache.
-  * `CircuitBreakerServiceTests`: Kiểm tra ngưỡng ngắt mạch 3 lỗi 5xx/429, đếm ngược thời gian ngắt 60s, và tự động khôi phục về trạng thái Closed khi thành công.
-  * `IntelligentRouterTests`: Kiểm tra chiến lược định tuyến `LowestCost`, `LowestLatency`, ưu tiên Key, tự động Failover, và cơ chế ngắt mạch Circuit Breaker bypass key bị hỏng.
-  * `VirtualKeyServiceTests`: Kiểm tra mã hóa SHA-256 hash, cấp phát Key, phân quyền mô hình `IsModelAllowed`, kiểm tra ngân sách `MaxBudgetUsd` và thời hạn `ExpiresAt`.
-  * `RateLimitServiceTests`: Kiểm tra tính năng Rate Limiting với Redis Distributed Cache, kiểm tra giới hạn RPM/TPM và cơ chế tự động fallback về `IMemoryCache`.
+* **Unit Tests (43 tests)**:
+  * `WebhookNotificationServiceTests`: Kiểm tra tạo payload Discord Embeds / Slack Attachments, kiểm tra cơ chế chống spam Throttling và gửi cảnh báo ngân sách 90%.
+  * `SemanticCacheServiceTests`: Kiểm tra chuẩn hóa prompt, SHA-256 semantic key, cache hit/miss.
+  * `CircuitBreakerServiceTests`: Kiểm tra ngưỡng ngắt mạch 3 lỗi 5xx/429 và khôi phục sau 60s.
+  * `IntelligentRouterTests`: Kiểm tra chiến lược định tuyến `LowestCost`, `LowestLatency`, ưu tiên Key, tự động Failover.
+  * `VirtualKeyServiceTests` & `RateLimitServiceTests`: Kiểm tra phân quyền mô hình, ngân sách `MaxBudgetUsd`, giới hạn RPM/TPM và Redis fallback.
 * **Integration Tests (4 tests)**:
   * Kiểm thử các API Endpoints thực tế (`/v1/chat/completions`, `/auth`, `/api/analytics`, `/api/route-rules`).
-* **Kết quả**: **41/41 tests thành công 100%**.
+* **Kết quả**: **47/47 tests thành công 100%**.
