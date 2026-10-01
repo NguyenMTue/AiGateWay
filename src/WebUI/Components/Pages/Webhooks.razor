@@ -1,0 +1,162 @@
+@page "/webhooks"
+@rendermode InteractiveServer
+@inject IOptions<WebhookSettings> WebhookOptions
+@inject IWebhookNotificationService WebhookService
+
+<PageTitle>AI Gateway - Webhook Alerts</PageTitle>
+
+<div class="mb-4">
+    <h2 class="fw-bold m-0">🔔 Real-time Webhook Alerts (Slack / Discord)</h2>
+    <p class="text-muted m-0">Automatic operational alerts when Virtual Key budget hits 90% or Provider error rate exceeds 10%</p>
+</div>
+
+<div class="row g-4">
+    <!-- Webhook Settings Overview -->
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white fw-bold">⚙️ Current Webhook Configuration</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label text-muted small fw-bold">WEBHOOK NOTIFICATIONS STATUS</label>
+                    <div>
+                        @if (Settings.Enabled)
+                        {
+                            <span class="badge bg-success fs-6">Enabled (Active)</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary fs-6">Disabled</span>
+                        }
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label text-muted small fw-bold">DISCORD WEBHOOK URL</label>
+                    <input type="text" class="form-control font-monospace" value="@(string.IsNullOrWhiteSpace(Settings.DiscordWebhookUrl) ? "Not Configured" : Settings.DiscordWebhookUrl)" readonly />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label text-muted small fw-bold">SLACK WEBHOOK URL</label>
+                    <input type="text" class="form-control font-monospace" value="@(string.IsNullOrWhiteSpace(Settings.SlackWebhookUrl) ? "Not Configured" : Settings.SlackWebhookUrl)" readonly />
+                </div>
+
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="form-label text-muted small fw-bold">BUDGET THRESHOLD</label>
+                        <div class="fw-bold fs-5 text-warning">@Settings.BudgetThresholdPercent%</div>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label text-muted small fw-bold">ERROR RATE THRESHOLD</label>
+                        <div class="fw-bold fs-5 text-danger">@Settings.ProviderErrorRateThresholdPercent%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live Webhook Test Form -->
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white fw-bold">🧪 Live Test Notification Trigger</div>
+            <div class="card-body">
+                <p class="text-muted small">Send an immediate test alert to configured Discord and Slack channels to verify webhook payload formatting and connectivity.</p>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Select Alert Type to Test:</label>
+                    <select class="form-select" @bind="_selectedAlertType">
+                        <option value="budget">⚠️ Virtual Key 90% Budget Warning Alert</option>
+                        <option value="health">🚨 Provider Error Rate (>10%) Alert</option>
+                        <option value="circuit">🔴 Circuit Breaker Tripped (OPEN) Alert</option>
+                    </select>
+                </div>
+
+                @if (!string.IsNullOrEmpty(_statusMessage))
+                {
+                    <div class="alert @_statusClass alert-dismissible fade show" role="alert">
+                        @_statusMessage
+                    </div>
+                }
+
+                <button class="btn btn-primary w-100 mt-2" @onclick="SendTestAlertAsync" disabled="@_isSending">
+                    @if (_isSending)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <span>Dispatching Webhook...</span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-send-fill me-2"></i>
+                        <span>Send Test Alert Now</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private WebhookSettings Settings => WebhookOptions.Value;
+    private string _selectedAlertType = "budget";
+    private bool _isSending;
+    private string? _statusMessage;
+    private string _statusClass = "alert-info";
+
+    private async Task SendTestAlertAsync()
+    {
+        _isSending = true;
+        _statusMessage = null;
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(Settings.DiscordWebhookUrl) && string.IsNullOrWhiteSpace(Settings.SlackWebhookUrl))
+            {
+                _statusClass = "alert-warning";
+                _statusMessage = "⚠️ No Discord or Slack Webhook URL configured in appsettings.json. Please add a Webhook URL to test.";
+                return;
+            }
+
+            switch (_selectedAlertType)
+            {
+                case "budget":
+                    await WebhookService.SendVirtualKeyBudgetAlertAsync(
+                        virtualKeyId: 999,
+                        keyName: "Test-GameClient-Key",
+                        keyMask: "gw-live-...test",
+                        currentUsageUsd: 91.50m,
+                        maxBudgetUsd: 100.00m);
+                    break;
+
+                case "health":
+                    await WebhookService.SendProviderHealthAlertAsync(
+                        providerId: 1,
+                        providerName: "OpenAI (Test)",
+                        errorRatePercent: 14.5,
+                        totalRequests: 200,
+                        failedRequests: 29,
+                        error429Count: 20,
+                        error5xxCount: 9);
+                    break;
+
+                case "circuit":
+                    await WebhookService.SendCircuitBreakerAlertAsync(
+                        providerApiKeyId: 12,
+                        providerName: "Google Gemini (Test)",
+                        consecutiveFailures: 3,
+                        breakDuration: TimeSpan.FromSeconds(60));
+                    break;
+            }
+
+            _statusClass = "alert-success";
+            _statusMessage = "✅ Test Webhook alert dispatched successfully! Check your Discord / Slack channel.";
+        }
+        catch (Exception ex)
+        {
+            _statusClass = "alert-danger";
+            _statusMessage = $"❌ Failed to dispatch test alert: {ex.Message}";
+        }
+        finally
+        {
+            _isSending = false;
+        }
+    }
+}

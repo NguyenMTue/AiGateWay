@@ -1,0 +1,130 @@
+@page "/virtual-keys"
+@rendermode InteractiveServer
+@inject ISender Sender
+
+<PageTitle>AI Gateway - Virtual Keys</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold m-0">🔑 Virtual Keys Management & Budget Telemetry</h2>
+        <p class="text-muted m-0">Monitor Game Client quotas, RPM/TPM limits, model access control, and 90% budget warning thresholds</p>
+    </div>
+    <button class="btn btn-outline-primary" @onclick="LoadKeysAsync">
+        <i class="bi bi-arrow-clockwise me-1"></i> Refresh List
+    </button>
+</div>
+
+@if (_isLoading)
+{
+    <div class="text-center my-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Key Name</th>
+                            <th>Key Prefix / Mask</th>
+                            <th>RPM Limit</th>
+                            <th>TPM Limit</th>
+                            <th>Max Budget ($)</th>
+                            <th>Current Spend</th>
+                            <th>Budget Usage %</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (_keys != null && _keys.Any())
+                        {
+                            @foreach (var key in _keys)
+                            {
+                                var percent = key.MaxBudgetUsd.HasValue && key.MaxBudgetUsd.Value > 0
+                                    ? (key.CurrentUsageUsd / key.MaxBudgetUsd.Value) * 100m
+                                    : 0m;
+
+                                <tr>
+                                    <td class="fw-bold">@key.Name</td>
+                                    <td><code>@key.KeyMask</code></td>
+                                    <td>@(key.RateLimitRpm?.ToString("N0") ?? "Unlimited")</td>
+                                    <td>@(key.RateLimitTpm?.ToString("N0") ?? "Unlimited")</td>
+                                    <td>@(key.MaxBudgetUsd.HasValue ? $"${key.MaxBudgetUsd.Value:F2}" : "Unlimited")</td>
+                                    <td class="fw-bold text-success">$@key.CurrentUsageUsd.ToString("F4")</td>
+                                    <td style="width: 180px;">
+                                        @if (key.MaxBudgetUsd.HasValue && key.MaxBudgetUsd.Value > 0)
+                                        {
+                                            <div class="progress" style="height: 18px;">
+                                                <div class="progress-bar @(percent >= 90 ? "bg-danger" : percent >= 75 ? "bg-warning" : "bg-success")"
+                                                     role="progressbar"
+                                                     style="width: @(Math.Min(100, percent))%; font-size: 11px; font-weight: bold;">
+                                                    @percent.ToString("F1")%
+                                                </div>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">N/A</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (!key.IsActive)
+                                        {
+                                            <span class="badge bg-secondary">Inactive</span>
+                                        }
+                                        else if (percent >= 90)
+                                        {
+                                            <span class="badge bg-danger">⚠️ Budget Warning (>=90%)</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success">Active</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="8" class="text-center text-muted py-4">No virtual keys created yet.</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<VirtualKeyDto>? _keys;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadKeysAsync();
+    }
+
+    private async Task LoadKeysAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _keys = await Sender.Send(new GetVirtualKeysQuery());
+        }
+        catch
+        {
+            _keys = new List<VirtualKeyDto>();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

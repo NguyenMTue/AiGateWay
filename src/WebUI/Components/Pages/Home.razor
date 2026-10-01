@@ -1,0 +1,202 @@
+@page "/"
+@rendermode InteractiveServer
+@inject ISender Sender
+
+<PageTitle>AI Gateway - Dashboard</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold m-0">🎮 AI Gateway Operations Dashboard</h2>
+        <p class="text-muted m-0">Enterprise Multi-Model Router & Governance Telemetry</p>
+    </div>
+    <button class="btn btn-outline-primary" @onclick="LoadDataAsync">
+        <i class="bi bi-arrow-clockwise me-1"></i> Refresh Telemetry
+    </button>
+</div>
+
+@if (_isLoading)
+{
+    <div class="text-center my-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2 text-muted">Fetching real-time gateway metrics...</p>
+    </div>
+}
+else
+{
+    <!-- Stat Cards Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 border-start border-4 border-primary h-100">
+                <div class="card-body">
+                    <div class="text-muted small fw-semibold text-uppercase">Total API Requests</div>
+                    <div class="fs-3 fw-bold text-dark">@(_report?.TotalRequests.ToString("N0") ?? "0")</div>
+                    <div class="small text-muted">Last 30 days telemetry</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 border-start border-4 border-success h-100">
+                <div class="card-body">
+                    <div class="text-muted small fw-semibold text-uppercase">Total Cost ($ USD)</div>
+                    <div class="fs-3 fw-bold text-success">$@(_report?.TotalCostUsd.ToString("F4") ?? "0.0000")</div>
+                    <div class="small text-muted">Aggregated spend</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 border-start border-4 border-info h-100">
+                <div class="card-body">
+                    <div class="text-muted small fw-semibold text-uppercase">Total Tokens</div>
+                    <div class="fs-3 fw-bold text-info">@(_report?.TotalTokens.ToString("N0") ?? "0")</div>
+                    <div class="small text-muted">Prompt + Completion</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 border-start border-4 border-warning h-100">
+                <div class="card-body">
+                    <div class="text-muted small fw-semibold text-uppercase">Active AI Providers</div>
+                    <div class="fs-3 fw-bold text-warning">@(_healthStats?.Count ?? 0)</div>
+                    <div class="small text-muted">OpenAI / Gemini / Claude</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Provider Health & Circuit Breaker Summary -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white fw-bold d-flex justify-content-between align-items-center">
+                    <span>🏥 AI Provider Health & Latency</span>
+                    <a href="provider-health" class="btn btn-sm btn-link text-decoration-none">View All</a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light small">
+                                <tr>
+                                    <th>Provider</th>
+                                    <th>Requests</th>
+                                    <th>Avg Latency</th>
+                                    <th>Error Rate</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (_healthStats != null && _healthStats.Any())
+                                {
+                                    @foreach (var p in _healthStats)
+                                    {
+                                        <tr>
+                                            <td class="fw-semibold">@p.ProviderName</td>
+                                            <td>@p.TotalRequests</td>
+                                            <td>@p.AverageLatencyMs ms</td>
+                                            <td>
+                                                <span class="@(p.ErrorRatePercent > 10 ? "text-danger fw-bold" : "text-dark")">
+                                                    @p.ErrorRatePercent%
+                                                </span>
+                                            </td>
+                                            <td>
+                                                @if (p.ErrorRatePercent > 10)
+                                                {
+                                                    <span class="badge bg-danger">High Errors (>10%)</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-success">Healthy</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-3">No provider telemetry logs recorded yet.</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white fw-bold d-flex justify-content-between align-items-center">
+                    <span>🔑 Top Virtual Keys Usage & Budget Status</span>
+                    <a href="virtual-keys" class="btn btn-sm btn-link text-decoration-none">View All Keys</a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light small">
+                                <tr>
+                                    <th>Key Name</th>
+                                    <th>Requests</th>
+                                    <th>Tokens</th>
+                                    <th>Total Cost</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (_keyStats != null && _keyStats.Any())
+                                {
+                                    @foreach (var k in _keyStats.Take(5))
+                                    {
+                                        <tr>
+                                            <td class="fw-semibold">@k.KeyName</td>
+                                            <td>@k.RequestCount</td>
+                                            <td>@k.TotalTokens.ToString("N0")</td>
+                                            <td class="fw-bold text-success">$@k.TotalCostUsd.ToString("F4")</td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted py-3">No key usage logs recorded yet.</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private CostAndTokenUsageReportDto? _report;
+    private List<ProviderHealthStatsDto>? _healthStats;
+    private List<VirtualKeyUsageStatsDto>? _keyStats;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _report = await Sender.Send(new GetCostAndTokenUsageQuery());
+            _healthStats = await Sender.Send(new GetProviderHealthStatsQuery());
+            _keyStats = await Sender.Send(new GetVirtualKeyUsageStatsQuery(Top: 10));
+        }
+        catch
+        {
+            // Ignore errors for uninitialized empty db state
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

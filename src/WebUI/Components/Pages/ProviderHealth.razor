@@ -1,0 +1,115 @@
+@page "/provider-health"
+@rendermode InteractiveServer
+@inject ISender Sender
+@inject ICircuitBreakerService CircuitBreaker
+
+<PageTitle>AI Gateway - Provider Health</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold m-0">🏥 AI Provider Health & Polly Circuit Breaker Status</h2>
+        <p class="text-muted m-0">Monitor latency, 429 Rate Limits, 5xx server errors, and automatic trip recovery</p>
+    </div>
+    <button class="btn btn-outline-primary" @onclick="LoadHealthAsync">
+        <i class="bi bi-arrow-clockwise me-1"></i> Refresh Health
+    </button>
+</div>
+
+@if (_isLoading)
+{
+    <div class="text-center my-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white fw-bold">AI Provider Health & Telemetry Metrics</div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Provider Name</th>
+                            <th>Total Requests</th>
+                            <th>Successful</th>
+                            <th>Failed</th>
+                            <th>429 Rate Limit</th>
+                            <th>5xx Server Error</th>
+                            <th>Error Rate %</th>
+                            <th>Avg Latency</th>
+                            <th>Health Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (_stats != null && _stats.Any())
+                        {
+                            @foreach (var s in _stats)
+                            {
+                                <tr>
+                                    <td class="fw-bold">@s.ProviderName</td>
+                                    <td>@s.TotalRequests</td>
+                                    <td class="text-success font-monospace">@s.SuccessfulRequests</td>
+                                    <td class="text-danger font-monospace">@s.FailedRequests</td>
+                                    <td>@s.Error429Count</td>
+                                    <td>@s.Error5xxCount</td>
+                                    <td>
+                                        <span class="fw-bold @(s.ErrorRatePercent > 10 ? "text-danger" : "text-dark")">
+                                            @s.ErrorRatePercent%
+                                        </span>
+                                    </td>
+                                    <td>@s.AverageLatencyMs ms</td>
+                                    <td>
+                                        @if (s.ErrorRatePercent > 10)
+                                        {
+                                            <span class="badge bg-danger">🚨 High Error Rate (>10%)</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success">🟢 Healthy</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="9" class="text-center text-muted py-4">No request logs recorded yet. Run `dotnet run --project .\src\MockClient` to generate telemetry traffic.</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<ProviderHealthStatsDto>? _stats;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadHealthAsync();
+    }
+
+    private async Task LoadHealthAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _stats = await Sender.Send(new GetProviderHealthStatsQuery());
+        }
+        catch
+        {
+            _stats = new List<ProviderHealthStatsDto>();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

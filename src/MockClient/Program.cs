@@ -14,6 +14,7 @@ public class Program
     private static string? _accessToken;
     private static bool _stressTestMode = false;
     private static int _requestCounter = 0;
+    private static HttpClient? _httpClient;
 
     public static async Task Main(string[] args)
     {
@@ -27,13 +28,20 @@ public class Program
             ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
         };
 
-        using var client = new HttpClient(handler) { BaseAddress = new Uri(GatewayBaseUrl) };
+        _httpClient = new HttpClient(handler) { BaseAddress = new Uri(GatewayBaseUrl) };
 
         // 1. Authenticate with Gateway
-        await AuthenticateAsync(client);
+        await AuthenticateAsync(_httpClient);
 
-        Console.WriteLine("\n[CTRL+C to exit | Press 'S' to toggle Stress Test Mode (Rate Limiting Trigger)]");
-        Console.WriteLine("----------------------------------------------------------------------------------");
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine("\n==================================================================================");
+        Console.WriteLine("  INTERACTIVE COMMANDS:");
+        Console.WriteLine("    [S] Toggle Stress Test Mode (Rapid 100ms requests -> Triggers 429 Rate Limit)");
+        Console.WriteLine("    [W] Trigger Real-Time Webhook Alert Test (Slack / Discord)");
+        Console.WriteLine("    [B] Simulate Heavy Budget Usage (Triggers >= 90% Budget Warning Webhook)");
+        Console.WriteLine("    [CTRL+C] Exit Simulator");
+        Console.WriteLine("==================================================================================\n");
+        Console.ResetColor();
 
         // Start background key listener thread
         _ = Task.Run(ListenForKeyPresses);
@@ -53,12 +61,12 @@ public class Program
             Console.ResetColor();
 
             // Send Chat Completion Request
-            await SendAiAnalyzeRequestAsync(client, posX, posY, playerDist);
+            await SendAiAnalyzeRequestAsync(_httpClient, posX, posY, playerDist);
 
             // Every 5 requests, check conversation context history (GET /conversations)
             if (_requestCounter % 5 == 0)
             {
-                await GetConversationContextAsync(client);
+                await GetConversationContextAsync(_httpClient);
             }
 
             var delayMs = _stressTestMode ? 100 : 2000;
@@ -75,6 +83,9 @@ public class Program
 ================================================================================
   Simulates an autonomous NPC Unity 2D / Physical Device sending live telemetry
   to the AI Gateway for Real-time LLM Routing, Rate Limiting & Audit Logging.
+
+  🌐 Blazor Dashboard UI : http://localhost:5240  (Or via Aspire AppHost)
+  📜 Swagger API Reference: https://localhost:7144/swagger
 ================================================================================");
         Console.ResetColor();
     }
@@ -118,7 +129,7 @@ public class Program
         }
     }
 
-    private static async Task SendAiAnalyzeRequestAsync(HttpClient client, double posX, double posY, double playerDist)
+    private static async Task SendAiAnalyzeRequestAsync(HttpClient client, double posX, double posY, double playerDist, int maxTokens = 150)
     {
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, "/v1/chat/completions");
 
@@ -140,7 +151,7 @@ public class Program
                 new { role = "system", content = "You are an NPC Guard. Analyze telemetry and output JSON response: {\"action\": \"...\", \"dialogue\": \"...\"}" },
                 new { role = "user", content = $"Telemetry: Pos=({posX},{posY}), PlayerDistance={playerDist}m" }
             },
-            max_tokens = 150
+            max_tokens = maxTokens
         };
 
         requestMessage.Content = JsonContent.Create(payload);
@@ -212,6 +223,33 @@ public class Program
         Console.ResetColor();
     }
 
+    private static async Task TriggerTestWebhookAlertAsync()
+    {
+        Console.ForegroundColor = ConsoleColor.Magenta;
+        Console.WriteLine("\n🔔 [WEBHOOK TEST] Dispatching test Webhook notification to Discord/Slack...");
+        Console.ResetColor();
+
+        try
+        {
+            if (_httpClient == null) return;
+            // Send high token budget request to exercise usage metering channel and webhook alerts
+            for (int i = 1; i <= 3; i++)
+            {
+                await SendAiAnalyzeRequestAsync(_httpClient, 50, 50, 5, maxTokens: 4000);
+            }
+
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("✅ [WEBHOOK TEST] High usage requests sent! Metering Channel will evaluate budget & alert Discord/Slack.\n");
+            Console.ResetColor();
+        }
+        catch (Exception ex)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"❌ [WEBHOOK ERROR] {ex.Message}\n");
+            Console.ResetColor();
+        }
+    }
+
     private static void ListenForKeyPresses()
     {
         while (true)
@@ -223,6 +261,28 @@ public class Program
                 Console.ForegroundColor = _stressTestMode ? ConsoleColor.Red : ConsoleColor.Green;
                 Console.WriteLine($"\n>>> STRESS TEST MODE TOGGLED: {(_stressTestMode ? "ON (100ms Interval - Rapid Fire!)" : "OFF (2000ms Normal Interval)")} <<<\n");
                 Console.ResetColor();
+            }
+            else if (key.Key == ConsoleKey.W)
+            {
+                _ = Task.Run(TriggerTestWebhookAlertAsync);
+            }
+            else if (key.Key == ConsoleKey.B)
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine("\n💥 [BUDGET BURST] Simulating heavy token usage burst to reach >= 90% MaxBudgetUsd...");
+                Console.ResetColor();
+
+                _ = Task.Run(async () =>
+                {
+                    if (_httpClient != null)
+                    {
+                        for (int i = 1; i <= 5; i++)
+                        {
+                            await SendAiAnalyzeRequestAsync(_httpClient, 10, 10, 1, maxTokens: 5000);
+                            await Task.Delay(200);
+                        }
+                    }
+                });
             }
         }
     }
