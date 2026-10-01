@@ -2,15 +2,15 @@
 @rendermode InteractiveServer
 @inject ISender Sender
 
-<PageTitle>AI Gateway - Dashboard</PageTitle>
+<PageTitle>AI Gateway - Bảng điều khiển</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h2 class="fw-bold m-0">🎮 AI Gateway Operations Dashboard</h2>
-        <p class="text-muted m-0">Enterprise Multi-Model Router & Governance Telemetry</p>
+        <h2 class="fw-bold m-0">🎮 Bảng Điều Khiển Quản Trị AI Gateway</h2>
+        <p class="text-muted m-0">Hệ thống Giám sát & Điều phối Multi-Model AI Enterprise</p>
     </div>
     <button class="btn btn-outline-primary" @onclick="LoadDataAsync">
-        <i class="bi bi-arrow-clockwise me-1"></i> Refresh Telemetry
+        <i class="bi bi-arrow-clockwise me-1"></i> Làm mới dữ liệu
     </button>
 </div>
 
@@ -18,9 +18,9 @@
 {
     <div class="text-center my-5">
         <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
+            <span class="visually-hidden">Đang tải...</span>
         </div>
-        <p class="mt-2 text-muted">Fetching real-time gateway metrics...</p>
+        <p class="mt-2 text-muted">Đang tải dữ liệu giám sát thời gian thực...</p>
     </div>
 }
 else
@@ -30,25 +30,25 @@ else
         <div class="col-md-3">
             <div class="card shadow-sm border-0 border-start border-4 border-primary h-100">
                 <div class="card-body">
-                    <div class="text-muted small fw-semibold text-uppercase">Total API Requests</div>
+                    <div class="text-muted small fw-semibold text-uppercase">Tổng số API Request</div>
                     <div class="fs-3 fw-bold text-dark">@(_report?.TotalRequests.ToString("N0") ?? "0")</div>
-                    <div class="small text-muted">Last 30 days telemetry</div>
+                    <div class="small text-muted">Dữ liệu 30 ngày gần nhất</div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card shadow-sm border-0 border-start border-4 border-success h-100">
                 <div class="card-body">
-                    <div class="text-muted small fw-semibold text-uppercase">Total Cost ($ USD)</div>
+                    <div class="text-muted small fw-semibold text-uppercase">Tổng Chi Phí ($ USD)</div>
                     <div class="fs-3 fw-bold text-success">$@(_report?.TotalCostUsd.ToString("F4") ?? "0.0000")</div>
-                    <div class="small text-muted">Aggregated spend</div>
+                    <div class="small text-muted">Tổng chi tiêu tích lũy</div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card shadow-sm border-0 border-start border-4 border-info h-100">
                 <div class="card-body">
-                    <div class="text-muted small fw-semibold text-uppercase">Total Tokens</div>
+                    <div class="text-muted small fw-semibold text-uppercase">Tổng Số Tokens</div>
                     <div class="fs-3 fw-bold text-info">@(_report?.TotalTokens.ToString("N0") ?? "0")</div>
                     <div class="small text-muted">Prompt + Completion</div>
                 </div>
@@ -57,7 +57,7 @@ else
         <div class="col-md-3">
             <div class="card shadow-sm border-0 border-start border-4 border-warning h-100">
                 <div class="card-body">
-                    <div class="text-muted small fw-semibold text-uppercase">Active AI Providers</div>
+                    <div class="text-muted small fw-semibold text-uppercase">Nhà Cung Cấp AI Hoạt Động</div>
                     <div class="fs-3 fw-bold text-warning">@(_healthStats?.Count ?? 0)</div>
                     <div class="small text-muted">OpenAI / Gemini / Claude</div>
                 </div>
@@ -70,19 +70,19 @@ else
         <div class="col-md-6">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-white fw-bold d-flex justify-content-between align-items-center">
-                    <span>🏥 AI Provider Health & Latency</span>
-                    <a href="provider-health" class="btn btn-sm btn-link text-decoration-none">View All</a>
+                    <span>🏥 Hiệu Năng & Độ Ổn Định Provider AI</span>
+                    <a href="provider-health" class="btn btn-sm btn-link text-decoration-none">Xem chi tiết</a>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
                             <thead class="table-light small">
                                 <tr>
-                                    <th>Provider</th>
-                                    <th>Requests</th>
-                                    <th>Avg Latency</th>
-                                    <th>Error Rate</th>
-                                    <th>Status</th>
+                                    <th>Nhà cung cấp</th>
+                                    <th>Request</th>
+                                    <th>Độ trễ TB</th>
+                                    <th>Tỷ lệ lỗi</th>
+                                    <th>Trạng thái</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -102,11 +102,11 @@ else
                                             <td>
                                                 @if (p.ErrorRatePercent > 10)
                                                 {
-                                                    <span class="badge bg-danger">High Errors (>10%)</span>
+                                                    <span class="badge bg-danger">Tỷ lệ lỗi cao (>10%)</span>
                                                 }
                                                 else
                                                 {
-                                                    <span class="badge bg-success">Healthy</span>
+                                                    <span class="badge bg-success">Ổn định</span>
                                                 }
                                             </td>
                                         </tr>
@@ -115,7 +115,7 @@ else
                                 else
                                 {
                                     <tr>
-                                        <td colspan="5" class="text-center text-muted py-3">No provider telemetry logs recorded yet.</td>
+                                        <td colspan="5" class="text-center text-muted py-3">Chưa có nhật ký giám sát nhà cung cấp.</td>
                                     </tr>
                                 }
                             </tbody>
@@ -128,18 +128,18 @@ else
         <div class="col-md-6">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-white fw-bold d-flex justify-content-between align-items-center">
-                    <span>🔑 Top Virtual Keys Usage & Budget Status</span>
-                    <a href="virtual-keys" class="btn btn-sm btn-link text-decoration-none">View All Keys</a>
+                    <span>🔑 Top Khóa Ảo Sử Dụng & Ngân Sách</span>
+                    <a href="virtual-keys" class="btn btn-sm btn-link text-decoration-none">Xem tất cả khóa</a>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
                             <thead class="table-light small">
                                 <tr>
-                                    <th>Key Name</th>
-                                    <th>Requests</th>
+                                    <th>Tên Khóa</th>
+                                    <th>Request</th>
                                     <th>Tokens</th>
-                                    <th>Total Cost</th>
+                                    <th>Tổng chi phí</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -158,7 +158,7 @@ else
                                 else
                                 {
                                     <tr>
-                                        <td colspan="4" class="text-center text-muted py-3">No key usage logs recorded yet.</td>
+                                        <td colspan="4" class="text-center text-muted py-3">Chưa có nhật ký sử dụng khóa ảo.</td>
                                     </tr>
                                 }
                             </tbody>

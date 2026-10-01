@@ -4,9 +4,11 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 builder.AddAzureContainerAppEnvironment("aca-env");
 
+var dbPassword = builder.AddParameter("db-password", "Password123!", secret: true);
+
 var databaseServer = builder
     .AddAzurePostgresFlexibleServer(Services.DatabaseServer)
-    .WithPasswordAuthentication()
+    .WithPasswordAuthentication(password: dbPassword)
     .RunAsContainer(container => 
         container.WithLifetime(ContainerLifetime.Persistent))
     .AddDatabase(Services.Database);

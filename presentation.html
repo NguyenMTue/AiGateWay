@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Gateway - Enterprise Multi-Model Router Presentation</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .slide { display: none; }
+        .slide.active { display: flex; }
+        .bg-grid {
+            background-size: 40px 40px;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans h-screen w-screen overflow-hidden flex flex-col justify-between select-none bg-grid">
+
+    <!-- Top Header Bar -->
+    <header class="w-full px-8 py-4 flex justify-between items-center border-b border-slate-800/60 bg-slate-900/40 backdrop-blur-md z-50">
+        <div class="flex items-center gap-3">
+            <span class="bg-indigo-600 text-white p-2 rounded-lg font-bold text-lg"><i class="fa-solid fa-robot"></i></span>
+            <div>
+                <h1 class="font-bold text-lg tracking-wide text-white">AI Gateway</h1>
+                <p class="text-xs text-indigo-400 font-medium">Enterprise Governance & Multi-Model Router for Games</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-4 text-sm text-slate-400">
+            <span id="slide-indicator" class="bg-slate-800 px-3 py-1 rounded-full text-indigo-300 font-mono font-semibold border border-slate-700">Slide 1 / 6</span>
+            <button id="toggle-notes-btn" onclick="toggleNotes()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1 rounded-lg border border-slate-700 transition flex items-center gap-2">
+                <i class="fa-solid fa-microphone text-amber-400"></i> <span id="notes-btn-text">Hiện Lời Thoại (SAY)</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Slide Viewer Area -->
+    <main class="flex-1 relative w-full h-full flex items-center justify-center p-8">
+
+        <!-- SLIDE 1: INTRO & MOTIVATION -->
+        <section class="slide active flex-col justify-between w-full max-w-6xl h-full max-h-[720px] bg-slate-900/70 border border-slate-800 rounded-2xl p-10 shadow-2xl relative overflow-hidden backdrop-blur-md">
+            <div class="space-y-4">
+                <span class="px-3 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-full text-xs font-semibold uppercase tracking-wider">Slide 01 • Giới thiệu Đề tài</span>
+                <h2 class="text-4xl font-extrabold text-white leading-tight">Cổng Kết nối API AI Trung gian dành cho Game</h2>
+                <p class="text-slate-400 text-base max-w-3xl">Giải pháp cổng kết nối bảo mật, định tuyến thông minh, quản lý hạn ngạch & cảnh báo thời gian thực xây dựng trên **.NET 10 ASP.NET Core Minimal APIs**.</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-6 my-6">
+                <div class="bg-slate-800/50 p-5 rounded-xl border border-red-500/20 flex gap-4 items-start">
+                    <div class="bg-red-500/10 p-3 rounded-lg text-red-400 text-xl"><i class="fa-solid fa-key"></i></div>
+                    <div>
+                        <h3 class="font-bold text-slate-200 mb-1">1. Lộ API Key bí mật</h3>
+                        <p class="text-xs text-slate-400">API Keys của OpenAI/Gemini nhúng trong file binary (.apk, .exe) dễ bị decompile và đánh cắp.</p>
+                    </div>
+                </div>
+                <div class="bg-slate-800/50 p-5 rounded-xl border border-amber-500/20 flex gap-4 items-start">
+                    <div class="bg-amber-500/10 p-3 rounded-lg text-amber-400 text-xl"><i class="fa-solid fa-money-bill-wave"></i></div>
+                    <div>
+                        <h3 class="font-bold text-slate-200 mb-1">2. Cháy ngân sách ($ USD)</h3>
+                        <p class="text-xs text-slate-400">Sự cố vỡ trận chi phí do người chơi spam hoặc do bug lặp request liên tục từ Game Client.</p>
+                    </div>
+                </div>
+                <div class="bg-slate-800/50 p-5 rounded-xl border border-purple-500/20 flex gap-4 items-start">
+                    <div class="bg-purple-500/10 p-3 rounded-lg text-purple-400 text-xl"><i class="fa-solid fa-server"></i></div>
+                    <div>
+                        <h3 class="font-bold text-slate-200 mb-1">3. Gián đoạn Trải nghiệm NPC</h3>
+                        <p class="text-xs text-slate-400">Khi 1 Provider gặp lỗi 429/5xx, cuộc thoại NPC bị khựng hoặc crash nếu không có Fallback.</p>
+                    </div>
+                </div>
+                <div class="bg-slate-800/50 p-5 rounded-xl border border-blue-500/20 flex gap-4 items-start">
+                    <div class="bg-blue-500/10 p-3 rounded-lg text-blue-400 text-xl"><i class="fa-solid fa-gauge-high"></i></div>
+                    <div>
+                        <h3 class="font-bold text-slate-200 mb-1">4. Bài toán Latency vs Cost</h3>
+                        <p class="text-xs text-slate-400">Hội thoại NPC cần phản hồi <500ms với giá rẻ, trong khi cốt truyện chính cần mô hình suy luận sâu.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Presenter Notes Box (Slide 1) -->
+            <div class="presenter-notes hidden bg-amber-950/40 border border-amber-500/30 p-4 rounded-xl text-amber-200 text-sm">
+                <div class="font-bold text-amber-400 mb-1"><i class="fa-solid fa-microphone me-2"></i> LỜI THOẠI PHÁT BIỂU (SAY):</div>
+                <p>"Kính chào Thầy/Sếp! Hôm nay em xin báo cáo dự án **AI Gateway** - Cổng kết nối API mã nguồn mở trên .NET 10 Clean Architecture. Khi đưa LLM vào game, nhà phát triển đối mặt 4 nguy cơ: Lộ Key, Cháy ngân sách, Sập hội thoại NPC do lỗi Provider, và bài toán tối ưu Chi phí vs Độ trễ. AI Gateway giải quyết triệt để 4 vấn đề này."</p>
+                <div class="font-semibold text-amber-400 mt-2 text-xs"><i class="fa-solid fa-video me-1"></i> THAO TÁC QUAY (RECORD): Quay Slide 1, dùng chuột trỏ qua 4 ô thách thức.</div>
+            </div>
+        </section>
+
+        <!-- SLIDE 2: ARCHITECTURE & CLEAN ARCHITECTURE -->
+        <section class="slide flex-col justify-between w-full max-w-6xl h-full max-h-[720px] bg-slate-900/70 border border-slate-800 rounded-2xl p-10 shadow-2xl relative overflow-hidden backdrop-blur-md">
+            <div class="space-y-2">
+                <span class="px-3 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-full text-xs font-semibold uppercase tracking-wider">Slide 02 • Sơ đồ Kiến trúc Systems</span>
+                <h2 class="text-3xl font-extrabold text-white">Clean Architecture & Cloud-Native Telemetry</h2>
+            </div>
+
+            <div class="grid grid-cols-3 gap-6 my-4">
+                <div class="bg-slate-800/40 p-5 rounded-xl border border-slate-700/60">
+                    <h3 class="font-bold text-indigo-400 mb-3 border-b border-slate-700 pb-2"><i class="fa-solid fa-gamepad me-2"></i> Client Layer</h3>
+                    <ul class="space-y-2 text-xs text-slate-300">
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400"></i> Unity 2D / 3D Game Engine</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400"></i> Unreal Engine & Mobile Apps</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400"></i> Mock Client Telemetry Simulator</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400"></i> Blazor WebApp Dashboard UI</li>
+                    </ul>
+                </div>
+                <div class="bg-slate-800/40 p-5 rounded-xl border border-indigo-500/30">
+                    <h3 class="font-bold text-indigo-400 mb-3 border-b border-slate-700 pb-2"><i class="fa-solid fa-cubes me-2"></i> Gateway (.NET 10)</h3>
+                    <ul class="space-y-2 text-xs text-slate-300">
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-shield-halved text-indigo-400"></i> Minimal APIs + MediatR CQRS</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-bolt text-indigo-400"></i> Intelligent Router & Failover</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-database text-indigo-400"></i> Redis Distributed Rate Limiter</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-memory text-indigo-400"></i> Semantic Response Cache (<2ms)</li>
+                    </ul>
+                </div>
+                <div class="bg-slate-800/40 p-5 rounded-xl border border-slate-700/60">
+                    <h3 class="font-bold text-indigo-400 mb-3 border-b border-slate-700 pb-2"><i class="fa-solid fa-network-wired me-2"></i> Infrastructure</h3>
+                    <ul class="space-y-2 text-xs text-slate-300">
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-server text-cyan-400"></i> PostgreSQL (RequestLogs DB)</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-memory text-cyan-400"></i> Redis Cache Cluster</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-cloud text-cyan-400"></i> OpenAI / Gemini / Claude APIs</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-bell text-amber-400"></i> Discord & Slack Webhooks</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Presenter Notes Box (Slide 2) -->
+            <div class="presenter-notes hidden bg-amber-950/40 border border-amber-500/30 p-4 rounded-xl text-amber-200 text-sm">
+                <div class="font-bold text-amber-400 mb-1"><i class="fa-solid fa-microphone me-2"></i> LỜI THOẠI PHÁT BIỂU (SAY):</div>
+                <p>"Hệ thống xây dựng theo Clean Architecture kết hợp CQRS. Luồng request đi qua các lớp bảo vệ: Rate Limiting phân tán qua Redis, Semantic Cache kiểm tra ngữ nghĩa, Intelligent Router chọn mô hình tốt nhất, và luồng Async Metering Channel tách biệt việc ghi log xuống DB để đảm bảo độ trễ nhỏ nhất."</p>
+                <div class="font-semibold text-amber-400 mt-2 text-xs"><i class="fa-solid fa-video me-1"></i> THAO TÁC QUAY (RECORD): Quay Slide 2, chuyển nhanh sang trình duyệt mở .NET Aspire Dashboard (`https://localhost:17228`).</div>
+            </div>
+        </section>
+
+        <!-- SLIDE 3: SECURITY & VIRTUAL KEYS -->
+        <section class="slide flex-col justify-between w-full max-w-6xl h-full max-h-[720px] bg-slate-900/70 border border-slate-800 rounded-2xl p-10 shadow-2xl relative overflow-hidden backdrop-blur-md">
+            <div class="space-y-2">
+                <span class="px-3 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-full text-xs font-semibold uppercase tracking-wider">Slide 03 • Bảo mật & Phân quyền</span>
+                <h2 class="text-3xl font-extrabold text-white">Mã hóa AES-256 & Virtual Key Governance</h2>
+            </div>
+
+            <div class="grid grid-cols-2 gap-8 my-4">
+                <div class="space-y-4">
+                    <div class="bg-slate-800/50 p-4 rounded-xl border border-emerald-500/30">
+                        <div class="font-bold text-emerald-400 mb-1"><i class="fa-solid fa-lock me-2"></i> Zero API Key Leakage</div>
+                        <p class="text-xs text-slate-300">Client chỉ giữ Virtual Keys (`gw-live-...`) hoặc JWT Bearer Token. Toàn bộ API Keys thật của OpenAI/Gemini được mã hóa **AES-256** trong PostgreSQL.</p>
+                    </div>
+                    <div class="bg-slate-800/50 p-4 rounded-xl border border-indigo-500/30">
+                        <div class="font-bold text-indigo-400 mb-1"><i class="fa-solid fa-sliders me-2"></i> Model Whitelisting per Key</div>
+                        <p class="text-xs text-slate-300">Phân quyền danh sách mô hình được phép truy cập (`AllowedModelAliases`). Key NPC thường chỉ được gọi `gpt-4o-mini`, trả về `403 Forbidden` nếu cố gọi model khác.</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-950 p-5 rounded-xl border border-slate-800 font-mono text-xs text-slate-300 space-y-2">
+                    <div class="text-slate-500">// Virtual Key Security Spec</div>
+                    <div class="text-emerald-400">Raw Key : <span class="text-slate-200">gw-live-devtestkey1234567890abcdef</span></div>
+                    <div class="text-indigo-400">Hash SHA256: <span class="text-slate-400">8f9b...a12f</span></div>
+                    <div class="text-amber-400">Max Budget : <span class="text-slate-200">$100.00 USD</span></div>
+                    <div class="text-cyan-400">Limits     : <span class="text-slate-200">60 RPM | 100,000 TPM</span></div>
+                    <div class="text-purple-400">Allowed    : <span class="text-slate-200">["gpt-4o-mini", "gemini-1.5-flash"]</span></div>
+                </div>
+            </div>
+
+            <!-- Presenter Notes Box (Slide 3) -->
+            <div class="presenter-notes hidden bg-amber-950/40 border border-amber-500/30 p-4 rounded-xl text-amber-200 text-sm">
+                <div class="font-bold text-amber-400 mb-1"><i class="fa-solid fa-microphone me-2"></i> LỜI THOẠI PHÁT BIỂU (SAY):</div>
+                <p>"Bảo mật là điểm sáng đầu tiên. Game Client không lưu API Key thật. Client chỉ dùng Virtual Key hoặc JWT Token ngắn hạn. Key thật được mã hóa AES-256. Hệ thống phân quyền Model Whitelisting - ví dụ Key NPC chỉ được gọi gpt-4o-mini, cố gọi gpt-4o sẽ bị chặn 403 Forbidden."</p>
+                <div class="font-semibold text-amber-400 mt-2 text-xs"><i class="fa-solid fa-video me-1"></i> THAO TÁC QUAY (RECORD): Chuyển màn hình sang Blazor UI trang Virtual Keys (`http://localhost:5240/virtual-keys`).</div>
+            </div>
+        </section>
+
+        <!-- SLIDE 4: REAL-TIME WEBHOOK ALERTS & RATE LIMITING -->
+        <section class="slide flex-col justify-between w-full max-w-6xl h-full max-h-[720px] bg-slate-900/70 border border-slate-800 rounded-2xl p-10 shadow-2xl relative overflow-hidden backdrop-blur-md">
+            <div class="space-y-2">
+                <span class="px-3 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-full text-xs font-semibold uppercase tracking-wider">Slide 04 • Cảnh báo Thời gian Thực</span>
+                <h2 class="text-3xl font-extrabold text-white">Webhook Notifications & Rate Limiting</h2>
+            </div>
+
+            <div class="grid grid-cols-2 gap-6 my-4">
+                <div class="bg-slate-800/40 p-5 rounded-xl border border-amber-500/30 space-y-3">
+                    <h3 class="font-bold text-amber-400 text-sm"><i class="fa-solid fa-bell me-2"></i> Webhook Alert Triggers</h3>
+                    <div class="bg-slate-900/80 p-3 rounded-lg border border-amber-500/20 text-xs">
+                        <div class="font-bold text-amber-300">⚠️ Virtual Key Budget Warning (>= 90%)</div>
+                        <p class="text-slate-400 mt-1">Tự động phát cảnh báo Rich Embeds tới Discord/Slack khi CurrentUsageUsd đạt 90% MaxBudgetUsd.</p>
+                    </div>
+                    <div class="bg-slate-900/80 p-3 rounded-lg border border-red-500/20 text-xs">
+                        <div class="font-bold text-red-400">🚨 Provider Error Rate > 10% Alert</div>
+                        <p class="text-slate-400 mt-1">Background worker quét cửa sổ thời gian gần nhất và bắn cảnh báo khi tỷ lệ lỗi vượt quá 10%.</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800/40 p-5 rounded-xl border border-indigo-500/30 space-y-3">
+                    <h3 class="font-bold text-indigo-400 text-sm"><i class="fa-solid fa-keyboard me-2"></i> Interactive Demo Shortcuts (MockClient)</h3>
+                    <ul class="space-y-2 text-xs text-slate-300">
+                        <li class="bg-slate-900 p-2 rounded border border-slate-700 flex justify-between items-center">
+                            <span>Phím <kbd class="bg-slate-800 px-2 py-0.5 rounded text-amber-400 font-mono">S</kbd> : Stress Test (100ms)</span>
+                            <span class="text-red-400 font-bold">Trigger 429 Rate Limit</span>
+                        </li>
+                        <li class="bg-slate-900 p-2 rounded border border-slate-700 flex justify-between items-center">
+                            <span>Phím <kbd class="bg-slate-800 px-2 py-0.5 rounded text-amber-400 font-mono">W</kbd> : Send Test Webhook</span>
+                            <span class="text-indigo-400 font-bold">Trigger Discord/Slack</span>
+                        </li>
+                        <li class="bg-slate-900 p-2 rounded border border-slate-700 flex justify-between items-center">
+                            <span>Phím <kbd class="bg-slate-800 px-2 py-0.5 rounded text-amber-400 font-mono">B</kbd> : Budget Burst (Heavy Token)</span>
+                            <span class="text-amber-400 font-bold">Trigger 90% Budget Alert</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Presenter Notes Box (Slide 4) -->
+            <div class="presenter-notes hidden bg-amber-950/40 border border-amber-500/30 p-4 rounded-xl text-amber-200 text-sm">
+                <div class="font-bold text-amber-400 mb-1"><i class="fa-solid fa-microphone me-2"></i> LỜI THOẠI PHÁT BIỂU (SAY):</div>
+                <p>"Bây giờ em xin demo tính năng Rate Limiting và Webhook Alerts. Khi bấm phím S trên Mock Client, Redis Rate Limiter lập tức chặn đứng lượt spam với lỗi HTTP 429. Khi nhấn phím B để giả lập đẩy chi phí chạm mốc 90%, hệ thống tự động bắn ngay thông báo màu cam ⚠️ Budget Warning tới Discord/Slack Channel!"</p>
+                <div class="font-semibold text-amber-400 mt-2 text-xs"><i class="fa-solid fa-video me-1"></i> THAO TÁC QUAY (RECORD): Split-screen Nửa trái quay MockClient Terminal gõ S và B, Nửa phải quay Discord/Slack Channel nổ thông báo.</div>
+            </div>
+        </section>
+
+        <!-- SLIDE 5: SEMANTIC CACHE & POLLY CIRCUIT BREAKER -->
+        <section class="slide flex-col justify-between w-full max-w-6xl h-full max-h-[720px] bg-slate-900/70 border border-slate-800 rounded-2xl p-10 shadow-2xl relative overflow-hidden backdrop-blur-md">
+            <div class="space-y-2">
+                <span class="px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full text-xs font-semibold uppercase tracking-wider">Slide 05 • Hiệu năng & Khả năng Chịu lỗi</span>
+                <h2 class="text-3xl font-extrabold text-white">Semantic Response Cache & Polly Circuit Breaker</h2>
+            </div>
+
+            <div class="grid grid-cols-2 gap-6 my-4">
+                <div class="bg-slate-800/40 p-5 rounded-xl border border-emerald-500/30">
+                    <h3 class="font-bold text-emerald-400 text-sm mb-2"><i class="fa-solid fa-bolt me-2"></i> Semantic Response Caching</h3>
+                    <p class="text-xs text-slate-300 mb-3">Tự động chuẩn hóa câu thoại prompt (lowercase, xóa dấu câu) ➔ Tạo SHA-256 Semantic Key `semcache:{model}:{hash}`.</p>
+                    <div class="bg-slate-950 p-3 rounded-lg text-xs font-mono text-emerald-400 space-y-1">
+                        <div>➔ Latency: <span class="text-white">< 2ms</span></div>
+                        <div>➔ Cost   : <span class="text-white">$0.00 USD</span></div>
+                        <div>➔ Tokens : <span class="text-white">0 Prompt / 0 Completion</span></div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800/40 p-5 rounded-xl border border-red-500/30">
+                    <h3 class="font-bold text-red-400 text-sm mb-2"><i class="fa-solid fa-heart-pulse me-2"></i> Polly Circuit Breaker (Auto Failover)</h3>
+                    <p class="text-xs text-slate-300 mb-3">Tự động ngắt mạch (chuyển sang `OPEN` trong 60s) khi 1 Provider gặp 3 lỗi 5xx hoặc 429 liên tiếp.</p>
+                    <div class="bg-slate-950 p-3 rounded-lg text-xs font-mono text-red-400 space-y-1">
+                        <div>➔ Bypass Overhead : <span class="text-white">0ms (Ngay lập tức)</span></div>
+                        <div>➔ Action Taken   : <span class="text-white">Gọi Fallback Model</span></div>
+                        <div>➔ Recovery Mode   : <span class="text-white">Half-Open Trial Request</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Presenter Notes Box (Slide 5) -->
+            <div class="presenter-notes hidden bg-amber-950/40 border border-amber-500/30 p-4 rounded-xl text-amber-200 text-sm">
+                <div class="font-bold text-amber-400 mb-1"><i class="fa-solid fa-microphone me-2"></i> LỜI THOẠI PHÁT BIỂU (SAY):</div>
+                <p>"Bài toán tối ưu chi phí và chống sập: Với các câu hỏi lặp lại của NPC, Semantic Cache kiểm tra Redis và trả về phản hồi tức thì dưới 2ms, $0 cost. Khi Provider sập lỗi 5xx 3 lần liên tiếp, Polly Circuit Breaker chuyển mạch sang OPEN trong 0ms để gọi Fallback Model ngay trong cùng request HTTP."</p>
+                <div class="font-semibold text-amber-400 mt-2 text-xs"><i class="fa-solid fa-video me-1"></i> THAO TÁC QUAY (RECORD): Mở Blazor UI trang Provider Health (`http://localhost:5240/provider-health`).</div>
+            </div>
+        </section>
+
+        <!-- SLIDE 6: CONCLUSION & 47/47 TESTS PASSED -->
+        <section class="slide flex-col justify-between w-full max-w-6xl h-full max-h-[720px] bg-slate-900/70 border border-slate-800 rounded-2xl p-10 shadow-2xl relative overflow-hidden backdrop-blur-md">
+            <div class="space-y-2">
+                <span class="px-3 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-full text-xs font-semibold uppercase tracking-wider">Slide 06 • Tổng kết & Kiểm thử</span>
+                <h2 class="text-3xl font-extrabold text-white">47/47 Automated Tests Passed 100%</h2>
+            </div>
+
+            <div class="grid grid-cols-3 gap-6 my-4">
+                <div class="bg-slate-800/40 p-5 rounded-xl border border-emerald-500/30 text-center space-y-2">
+                    <div class="text-3xl font-extrabold text-emerald-400">43 / 43</div>
+                    <div class="font-bold text-slate-200 text-sm">Unit Tests</div>
+                    <p class="text-xs text-slate-400">WebhookNotifier, SemanticCache, CircuitBreaker, IntelligentRouter, VirtualKeys.</p>
+                </div>
+                <div class="bg-slate-800/40 p-5 rounded-xl border border-indigo-500/30 text-center space-y-2">
+                    <div class="text-3xl font-extrabold text-indigo-400">4 / 4</div>
+                    <div class="font-bold text-slate-200 text-sm">Integration Tests</div>
+                    <p class="text-xs text-slate-400">Kiểm thử API Endpoints thực tế (`/v1/chat/completions`, `/auth`, `/analytics`).</p>
+                </div>
+                <div class="bg-slate-800/40 p-5 rounded-xl border border-purple-500/30 text-center space-y-2">
+                    <div class="text-3xl font-extrabold text-purple-400">100%</div>
+                    <div class="font-bold text-slate-200 text-sm">AI Worklog Audit</div>
+                    <p class="text-xs text-slate-400">Ghi chép minh bạch quá trình sửa lỗi biên dịch tại `.ai/role/AI_WORKLOG.md`.</p>
+                </div>
+            </div>
+
+            <!-- Presenter Notes Box (Slide 6) -->
+            <div class="presenter-notes hidden bg-amber-950/40 border border-amber-500/30 p-4 rounded-xl text-amber-200 text-sm">
+                <div class="font-bold text-amber-400 mb-1"><i class="fa-solid fa-microphone me-2"></i> LỜI THOẠI PHÁT BIỂU (SAY):</div>
+                <p>"Tổng kết lại, hệ thống AI Gateway đã hoàn thiện full-stack với .NET 10, Blazor Dashboard UI và Discord/Slack Webhooks. Dự án đạt độ tin cậy cao với 47/47 automated tests passed 100%. Em xin chân thành cảm ơn Thầy/Sếp đã lắng nghe và xin nhận các câu hỏi góp ý!"</p>
+                <div class="font-semibold text-amber-400 mt-2 text-xs"><i class="fa-solid fa-video me-1"></i> THAO TÁC QUAY (RECORD): Quay màn hình Terminal gõ `dotnet test` hiện kết quả xanh lá 100%.</div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Bottom Navigation Footer -->
+    <footer class="w-full px-8 py-4 flex justify-between items-center border-t border-slate-800/60 bg-slate-900/40 backdrop-blur-md z-50">
+        <div class="text-xs text-slate-500 font-mono">
+            Sử dụng phím <kbd class="bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">←</kbd> <kbd class="bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">→</kbd> hoặc <kbd class="bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">SPACE</kbd> để chuyển Slide
+        </div>
+        <div class="flex gap-3">
+            <button onclick="prevSlide()" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-semibold border border-slate-700 transition flex items-center gap-2">
+                <i class="fa-solid fa-chevron-left"></i> Previous
+            </button>
+            <button onclick="nextSlide()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-indigo-600/30 transition flex items-center gap-2">
+                Next <i class="fa-solid fa-chevron-right"></i>
+            </button>
+        </div>
+    </footer>
+
+    <!-- Slide Navigation Controller Script -->
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const slideIndicator = document.getElementById('slide-indicator');
+        let showNotes = false;
+
+        function showSlide(index) {
+            slides.forEach(s => s.classList.remove('active'));
+            if (index < 0) currentSlide = 0;
+            else if (index >= slides.length) currentSlide = slides.length - 1;
+            else currentSlide = index;
+
+            slides[currentSlide].classList.add('active');
+            slideIndicator.innerText = `Slide ${currentSlide + 1} / ${slides.length}`;
+        }
+
+        function nextSlide() {
+            showSlide(currentSlide + 1);
+        }
+
+        function prevSlide() {
+            showSlide(currentSlide - 1);
+        }
+
+        function toggleNotes() {
+            showNotes = !showNotes;
+            const notesBoxes = document.querySelectorAll('.presenter-notes');
+            const btnText = document.getElementById('notes-btn-text');
+
+            notesBoxes.forEach(box => {
+                if (showNotes) box.classList.remove('hidden');
+                else box.classList.add('hidden');
+            });
+
+            btnText.innerText = showNotes ? "Ẩn Lời Thoại (SAY)" : "Hiện Lời Thoại (SAY)";
+        }
+
+        // Keyboard Shortcuts listener
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                nextSlide();
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                prevSlide();
+            } else if (e.key === 'n' || e.key === 'N') {
+                toggleNotes();
+            }
+        });
+    </script>
+</body>
+</html>

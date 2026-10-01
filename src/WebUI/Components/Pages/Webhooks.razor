@@ -3,50 +3,50 @@
 @inject IOptions<WebhookSettings> WebhookOptions
 @inject IWebhookNotificationService WebhookService
 
-<PageTitle>AI Gateway - Webhook Alerts</PageTitle>
+<PageTitle>AI Gateway - Cảnh báo Webhook</PageTitle>
 
 <div class="mb-4">
-    <h2 class="fw-bold m-0">🔔 Real-time Webhook Alerts (Slack / Discord)</h2>
-    <p class="text-muted m-0">Automatic operational alerts when Virtual Key budget hits 90% or Provider error rate exceeds 10%</p>
+    <h2 class="fw-bold m-0">🔔 Cảnh Báo Webhook Thời Gian Thực (Slack / Discord)</h2>
+    <p class="text-muted m-0">Tự động phát cảnh báo vận hành khi ngân sách Khóa ảo đạt 90% hoặc tỷ lệ lỗi Nhà cung cấp vượt quá 10%</p>
 </div>
 
 <div class="row g-4">
     <!-- Webhook Settings Overview -->
     <div class="col-md-6">
         <div class="card shadow-sm border-0 h-100">
-            <div class="card-header bg-white fw-bold">⚙️ Current Webhook Configuration</div>
+            <div class="card-header bg-white fw-bold">⚙️ Cấu Hình Webhook Hiện Tại</div>
             <div class="card-body">
                 <div class="mb-3">
-                    <label class="form-label text-muted small fw-bold">WEBHOOK NOTIFICATIONS STATUS</label>
+                    <label class="form-label text-muted small fw-bold">TRẠNG THÁI THÔNG BÁO WEBHOOK</label>
                     <div>
                         @if (Settings.Enabled)
                         {
-                            <span class="badge bg-success fs-6">Enabled (Active)</span>
+                            <span class="badge bg-success fs-6">Đã kích hoạt (Hoạt động)</span>
                         }
                         else
                         {
-                            <span class="badge bg-secondary fs-6">Disabled</span>
+                            <span class="badge bg-secondary fs-6">Chưa kích hoạt</span>
                         }
                     </div>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label text-muted small fw-bold">DISCORD WEBHOOK URL</label>
-                    <input type="text" class="form-control font-monospace" value="@(string.IsNullOrWhiteSpace(Settings.DiscordWebhookUrl) ? "Not Configured" : Settings.DiscordWebhookUrl)" readonly />
+                    <label class="form-label text-muted small fw-bold">URL DISCORD WEBHOOK</label>
+                    <input type="text" class="form-control font-monospace" value="@(string.IsNullOrWhiteSpace(Settings.DiscordWebhookUrl) ? "Chưa cấu hình" : Settings.DiscordWebhookUrl)" readonly />
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label text-muted small fw-bold">SLACK WEBHOOK URL</label>
-                    <input type="text" class="form-control font-monospace" value="@(string.IsNullOrWhiteSpace(Settings.SlackWebhookUrl) ? "Not Configured" : Settings.SlackWebhookUrl)" readonly />
+                    <label class="form-label text-muted small fw-bold">URL SLACK WEBHOOK</label>
+                    <input type="text" class="form-control font-monospace" value="@(string.IsNullOrWhiteSpace(Settings.SlackWebhookUrl) ? "Chưa cấu hình" : Settings.SlackWebhookUrl)" readonly />
                 </div>
 
                 <div class="row g-2">
                     <div class="col-6">
-                        <label class="form-label text-muted small fw-bold">BUDGET THRESHOLD</label>
+                        <label class="form-label text-muted small fw-bold">NGƯỠNG CẢNH BÁO NGÂN SÁCH</label>
                         <div class="fw-bold fs-5 text-warning">@Settings.BudgetThresholdPercent%</div>
                     </div>
                     <div class="col-6">
-                        <label class="form-label text-muted small fw-bold">ERROR RATE THRESHOLD</label>
+                        <label class="form-label text-muted small fw-bold">NGƯỠNG TỶ LỆ LỖI</label>
                         <div class="fw-bold fs-5 text-danger">@Settings.ProviderErrorRateThresholdPercent%</div>
                     </div>
                 </div>
@@ -57,16 +57,16 @@
     <!-- Live Webhook Test Form -->
     <div class="col-md-6">
         <div class="card shadow-sm border-0 h-100">
-            <div class="card-header bg-white fw-bold">🧪 Live Test Notification Trigger</div>
+            <div class="card-header bg-white fw-bold">🧪 Thử Nghiệm Bật Cảnh Báo Webhook</div>
             <div class="card-body">
-                <p class="text-muted small">Send an immediate test alert to configured Discord and Slack channels to verify webhook payload formatting and connectivity.</p>
+                <p class="text-muted small">Gửi cảnh báo thử nghiệm ngay lập tức tới channel Discord và Slack đã cấu hình để kiểm tra định dạng và kết nối.</p>
 
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">Select Alert Type to Test:</label>
+                    <label class="form-label fw-semibold">Chọn loại cảnh báo để thử nghiệm:</label>
                     <select class="form-select" @bind="_selectedAlertType">
-                        <option value="budget">⚠️ Virtual Key 90% Budget Warning Alert</option>
-                        <option value="health">🚨 Provider Error Rate (>10%) Alert</option>
-                        <option value="circuit">🔴 Circuit Breaker Tripped (OPEN) Alert</option>
+                        <option value="budget">⚠️ Cảnh báo Ngân sách Khóa ảo 90%</option>
+                        <option value="health">🚨 Cảnh báo Tỷ lệ lỗi Nhà cung cấp (>10%)</option>
+                        <option value="circuit">🔴 Cảnh báo Circuit Breaker Ngắt Mạch (OPEN)</option>
                     </select>
                 </div>
 
@@ -81,12 +81,12 @@
                     @if (_isSending)
                     {
                         <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        <span>Dispatching Webhook...</span>
+                        <span>Đang phát Webhook...</span>
                     }
                     else
                     {
                         <i class="bi bi-send-fill me-2"></i>
-                        <span>Send Test Alert Now</span>
+                        <span>Gửi Cảnh Báo Thử Nghiệm Ngay</span>
                     }
                 </button>
             </div>
@@ -111,7 +111,7 @@
             if (string.IsNullOrWhiteSpace(Settings.DiscordWebhookUrl) && string.IsNullOrWhiteSpace(Settings.SlackWebhookUrl))
             {
                 _statusClass = "alert-warning";
-                _statusMessage = "⚠️ No Discord or Slack Webhook URL configured in appsettings.json. Please add a Webhook URL to test.";
+                _statusMessage = "⚠️ Chưa cấu hình Webhook URL cho Discord hoặc Slack trong appsettings.json. Vui lòng thêm Webhook URL để thử nghiệm.";
                 return;
             }
 
@@ -147,12 +147,12 @@
             }
 
             _statusClass = "alert-success";
-            _statusMessage = "✅ Test Webhook alert dispatched successfully! Check your Discord / Slack channel.";
+            _statusMessage = "✅ Đã gửi cảnh báo thử nghiệm Webhook thành công! Hãy kiểm tra channel Discord / Slack của bạn.";
         }
         catch (Exception ex)
         {
             _statusClass = "alert-danger";
-            _statusMessage = $"❌ Failed to dispatch test alert: {ex.Message}";
+            _statusMessage = $"❌ Gửi cảnh báo thử nghiệm thất bại: {ex.Message}";
         }
         finally
         {

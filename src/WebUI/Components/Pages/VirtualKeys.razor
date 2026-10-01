@@ -2,15 +2,15 @@
 @rendermode InteractiveServer
 @inject ISender Sender
 
-<PageTitle>AI Gateway - Virtual Keys</PageTitle>
+<PageTitle>AI Gateway - Quản lý Khóa ảo</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h2 class="fw-bold m-0">🔑 Virtual Keys Management & Budget Telemetry</h2>
-        <p class="text-muted m-0">Monitor Game Client quotas, RPM/TPM limits, model access control, and 90% budget warning thresholds</p>
+        <h2 class="fw-bold m-0">🔑 Quản Lý Khóa Ảo & Giám Sát Ngân Sách</h2>
+        <p class="text-muted m-0">Quản lý quota client, giới hạn RPM/TPM, phân quyền model và cảnh báo ngân sách 90%</p>
     </div>
     <button class="btn btn-outline-primary" @onclick="LoadKeysAsync">
-        <i class="bi bi-arrow-clockwise me-1"></i> Refresh List
+        <i class="bi bi-arrow-clockwise me-1"></i> Làm mới danh sách
     </button>
 </div>
 
@@ -18,7 +18,7 @@
 {
     <div class="text-center my-5">
         <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
+            <span class="visually-hidden">Đang tải...</span>
         </div>
     </div>
 }
@@ -30,14 +30,14 @@ else
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th>Key Name</th>
+                            <th>Tên Khóa</th>
                             <th>Key Prefix / Mask</th>
-                            <th>RPM Limit</th>
-                            <th>TPM Limit</th>
-                            <th>Max Budget ($)</th>
-                            <th>Current Spend</th>
-                            <th>Budget Usage %</th>
-                            <th>Status</th>
+                            <th>Giới hạn RPM</th>
+                            <th>Giới hạn TPM</th>
+                            <th>Ngân sách tối đa ($)</th>
+                            <th>Chi tiêu hiện tại</th>
+                            <th>% Ngân sách đã dùng</th>
+                            <th>Trạng thái</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -52,9 +52,9 @@ else
                                 <tr>
                                     <td class="fw-bold">@key.Name</td>
                                     <td><code>@key.KeyMask</code></td>
-                                    <td>@(key.RateLimitRpm?.ToString("N0") ?? "Unlimited")</td>
-                                    <td>@(key.RateLimitTpm?.ToString("N0") ?? "Unlimited")</td>
-                                    <td>@(key.MaxBudgetUsd.HasValue ? $"${key.MaxBudgetUsd.Value:F2}" : "Unlimited")</td>
+                                    <td>@(key.RateLimitRpm?.ToString("N0") ?? "Không giới hạn")</td>
+                                    <td>@(key.RateLimitTpm?.ToString("N0") ?? "Không giới hạn")</td>
+                                    <td>@(key.MaxBudgetUsd.HasValue ? $"${key.MaxBudgetUsd.Value:F2}" : "Không giới hạn")</td>
                                     <td class="fw-bold text-success">$@key.CurrentUsageUsd.ToString("F4")</td>
                                     <td style="width: 180px;">
                                         @if (key.MaxBudgetUsd.HasValue && key.MaxBudgetUsd.Value > 0)
@@ -75,15 +75,15 @@ else
                                     <td>
                                         @if (!key.IsActive)
                                         {
-                                            <span class="badge bg-secondary">Inactive</span>
+                                            <span class="badge bg-secondary">Tạm ngừng</span>
                                         }
                                         else if (percent >= 90)
                                         {
-                                            <span class="badge bg-danger">⚠️ Budget Warning (>=90%)</span>
+                                            <span class="badge bg-danger">⚠️ Cảnh báo ngân sách (>=90%)</span>
                                         }
                                         else
                                         {
-                                            <span class="badge bg-success">Active</span>
+                                            <span class="badge bg-success">Đang hoạt động</span>
                                         }
                                     </td>
                                 </tr>
@@ -92,7 +92,7 @@ else
                         else
                         {
                             <tr>
-                                <td colspan="8" class="text-center text-muted py-4">No virtual keys created yet.</td>
+                                <td colspan="8" class="text-center text-muted py-4">Chưa có khóa ảo nào được tạo.</td>
                             </tr>
                         }
                     </tbody>
